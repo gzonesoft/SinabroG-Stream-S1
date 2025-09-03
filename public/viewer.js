@@ -4,6 +4,8 @@ class StreamViewer {
     constructor() {
         this.currentStreamKey = null;
         this.hls = null;
+        this.timeUpdateInterval = null;
+        this.serviceName = 'GZONESOFT LIVE';
         this.init();
     }
     
@@ -80,15 +82,11 @@ class StreamViewer {
     loadFLVStream(streamKey, flvUrl, webPlayer) {
         // FLV.js 지원 확인
         if (flvjs && flvjs.isSupported()) {
-            const video = document.createElement('video');
-            video.controls = true;
-            video.autoplay = true;
-            video.muted = true;
-            video.className = 'w-100 h-100';
-            video.style.objectFit = 'contain';
+            const videoContainer = this.createVideoContainer();
+            const video = videoContainer.querySelector('video');
             
             webPlayer.innerHTML = '';
-            webPlayer.appendChild(video);
+            webPlayer.appendChild(videoContainer);
             
             // FLV.js 플레이어 생성
             const flvPlayer = flvjs.createPlayer({
@@ -114,11 +112,13 @@ class StreamViewer {
             flvPlayer.on(flvjs.Events.LOADED_METADATA, () => {
                 console.log('FLV.js metadata loaded');
                 video.muted = false;
+                this.startOverlayUpdate(videoContainer);
                 this.showAlert('FLV 스트림이 시작되었습니다!', 'success');
             });
             
             flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
                 console.error('FLV.js Error:', errorType, errorDetail);
+                this.stopOverlayUpdate();
                 this.fallbackToNativeFLV(streamKey, flvUrl, webPlayer);
             });
             
@@ -127,6 +127,7 @@ class StreamViewer {
                 flvPlayer.play();
             } catch (error) {
                 console.error('FLV.js failed to start:', error);
+                this.stopOverlayUpdate();
                 this.fallbackToNativeFLV(streamKey, flvUrl, webPlayer);
             }
             
@@ -138,16 +139,12 @@ class StreamViewer {
     
     fallbackToNativeFLV(streamKey, flvUrl, webPlayer) {
         // HTML5 video로 FLV 시도 (일부 브라우저에서 작동)
-        const video = document.createElement('video');
-        video.controls = true;
-        video.autoplay = true;
-        video.muted = true;
-        video.className = 'w-100 h-100';
-        video.style.objectFit = 'contain';
+        const videoContainer = this.createVideoContainer();
+        const video = videoContainer.querySelector('video');
         video.src = flvUrl;
         
         webPlayer.innerHTML = '';
-        webPlayer.appendChild(video);
+        webPlayer.appendChild(videoContainer);
         
         video.addEventListener('loadstart', () => {
             console.log('Native FLV loading...');
@@ -156,17 +153,20 @@ class StreamViewer {
         video.addEventListener('canplay', () => {
             console.log('Native FLV ready');
             video.muted = false;
+            this.startOverlayUpdate(videoContainer);
             this.showAlert('네이티브 FLV 스트림이 시작되었습니다!', 'success');
         });
         
         video.addEventListener('error', (e) => {
             console.error('Native FLV Error:', e);
+            this.stopOverlayUpdate();
             this.handleStreamError(streamKey, flvUrl, '브라우저에서 FLV 재생을 지원하지 않습니다.');
         });
         
         // 5초 후에도 재생이 안되면 오류 처리
         setTimeout(() => {
             if (video.readyState === 0) {
+                this.stopOverlayUpdate();
                 this.handleStreamError(streamKey, flvUrl, 'FLV 스트림 로딩 타임아웃');
             }
         }, 5000);
@@ -183,25 +183,23 @@ class StreamViewer {
                 backBufferLength: 90
             });
             
-            const video = document.createElement('video');
-            video.controls = true;
-            video.autoplay = true;
-            video.muted = true;
-            video.className = 'w-100 h-100';
-            video.style.objectFit = 'contain';
+            const videoContainer = this.createVideoContainer();
+            const video = videoContainer.querySelector('video');
             
             webPlayer.innerHTML = '';
-            webPlayer.appendChild(video);
+            webPlayer.appendChild(videoContainer);
             
             this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 console.log('HLS Stream loaded successfully');
                 video.muted = false;
+                this.startOverlayUpdate(videoContainer);
                 this.showAlert('HLS 스트림이 시작되었습니다!', 'success');
             });
             
             this.hls.on(Hls.Events.ERROR, (event, data) => {
                 console.error('HLS Error:', data);
                 if (data.fatal) {
+                    this.stopOverlayUpdate();
                     this.handleStreamError(streamKey, `http://ai.gzonesoft.com:18001/live/${streamKey}.flv`);
                 }
             });
@@ -244,6 +242,104 @@ class StreamViewer {
         `;
         
         this.showAlert('웹 플레이어 연결 실패. 다른 방법을 시도해주세요.', 'warning');
+    }
+    
+    // 비디오 컨테이너 생성 (오버레이 포함)
+    createVideoContainer() {
+        const container = document.createElement('div');
+        container.className = 'video-container w-100 h-100';
+        
+        const video = document.createElement('video');
+        video.controls = true;
+        video.autoplay = true;
+        video.muted = true;
+        video.className = 'w-100 h-100';
+        video.style.objectFit = 'contain';
+        
+        // 서비스 이름 오버레이
+        const serviceOverlay = document.createElement('div');
+        serviceOverlay.className = 'video-overlay overlay-service-name overlay-fade-in';
+        serviceOverlay.textContent = this.serviceName;
+        
+        // 시간 오버레이
+        const timeOverlay = document.createElement('div');
+        timeOverlay.className = 'video-overlay overlay-time overlay-fade-in';
+        timeOverlay.innerHTML = `
+            <div class="overlay-current-time">--:--:--</div>
+            <div class="overlay-date">----년 --월 --일</div>
+        `;
+        
+        container.appendChild(video);
+        container.appendChild(serviceOverlay);
+        container.appendChild(timeOverlay);
+        
+        return container;
+    }
+    
+    // 오버레이 시간 업데이트 시작
+    startOverlayUpdate(container) {
+        this.stopOverlayUpdate(); // 기존 인터벌 정리
+        
+        const timeOverlay = container.querySelector('.overlay-time');
+        if (!timeOverlay) return;
+        
+        this.timeUpdateInterval = setInterval(() => {
+            this.updateTimeOverlay(timeOverlay);
+        }, 1000);
+        
+        // 즉시 한 번 업데이트
+        this.updateTimeOverlay(timeOverlay);
+    }
+    
+    // 오버레이 시간 업데이트 중지
+    stopOverlayUpdate() {
+        if (this.timeUpdateInterval) {
+            clearInterval(this.timeUpdateInterval);
+            this.timeUpdateInterval = null;
+        }
+    }
+    
+    // 시간 오버레이 업데이트
+    updateTimeOverlay(timeOverlay) {
+        const now = new Date();
+        
+        // 현재 시간 포맷팅 (24시간 형식)
+        const timeString = now.toLocaleTimeString('ko-KR', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        
+        // 현재 날짜 포맷팅
+        const dateString = now.toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            weekday: 'short'
+        });
+        
+        const timeElement = timeOverlay.querySelector('.overlay-current-time');
+        const dateElement = timeOverlay.querySelector('.overlay-date');
+        
+        if (timeElement) {
+            timeElement.textContent = timeString;
+        }
+        
+        if (dateElement) {
+            dateElement.textContent = dateString;
+        }
+    }
+    
+    // 서비스 이름 설정
+    setServiceName(name) {
+        this.serviceName = name || 'GZONESOFT LIVE';
+        
+        // 현재 표시 중인 오버레이도 업데이트
+        const serviceOverlay = document.querySelector('.overlay-service-name');
+        if (serviceOverlay) {
+            serviceOverlay.textContent = this.serviceName;
+        }
     }
     
     retryStream() {
@@ -359,7 +455,19 @@ window.addEventListener('popstate', (event) => {
 
 // 페이지 언로드시 정리
 window.addEventListener('beforeunload', () => {
-    if (streamViewer && streamViewer.hls) {
-        streamViewer.hls.destroy();
+    if (streamViewer) {
+        if (streamViewer.hls) {
+            streamViewer.hls.destroy();
+        }
+        streamViewer.stopOverlayUpdate();
     }
 });
+
+// 오버레이 설정 함수들 (전역)
+function setServiceName() {
+    const name = prompt('서비스 이름을 입력하세요:', streamViewer.serviceName);
+    if (name !== null) {
+        streamViewer.setServiceName(name);
+        streamViewer.showAlert('서비스 이름이 변경되었습니다!', 'success');
+    }
+}

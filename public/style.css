@@ -239,3 +239,87 @@ body {
         transform: translateY(0);
     }
 }
+
+/* 비디오 오버레이 스타일 */
+.video-container {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.video-overlay {
+    position: absolute;
+    pointer-events: none;
+    z-index: 10;
+    color: white;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.overlay-service-name {
+    top: 20px;
+    left: 20px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+    text-shadow: none;
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+.overlay-time {
+    bottom: 20px;
+    right: 20px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.overlay-date {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-top: 2px;
+}
+
+/* 모바일 반응형 오버레이 */
+@media (max-width: 768px) {
+    .overlay-service-name {
+        font-size: 1.2rem;
+        top: 15px;
+        left: 15px;
+    }
+    
+    .overlay-time {
+        font-size: 1rem;
+        bottom: 15px;
+        right: 15px;
+        padding: 6px 10px;
+    }
+    
+    .overlay-date {
+        font-size: 0.8rem;
+    }
+}
+
+/* 오버레이 애니메이션 */
+.overlay-fade-in {
+    animation: overlayFadeIn 1s ease-in-out;
+}
+
+@keyframes overlayFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
