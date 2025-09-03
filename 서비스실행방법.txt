@@ -1,4 +1,164 @@
+# GZONESOFT DJI 스트리밍 서버 실행 방법
 
-Start service..
+## 🚀 기본 서비스 실행
 
-cd /Users/gzonesoft/MOKWON-WEB_AI/dji && npm start
+### 1. 프로덕션 서버 시작
+```bash
+cd /Users/gzonesoft/SinabroG-Stream-S1
+npm start
+```
+
+### 2. 개발 서버 시작 (자동 재시작)
+```bash
+cd /Users/gzonesoft/SinabroG-Stream-S1
+npm run dev
+```
+
+### 3. 서버 완전 종료
+```bash
+cd /Users/gzonesoft/SinabroG-Stream-S1
+npm run stop
+```
+
+## 🌐 접속 주소
+
+### 관리자 대시보드
+- HTTP: http://localhost:17936
+- HTTPS: https://localhost:17937
+- 외부접속: https://ai.gzonesoft.com:17937
+
+### 스트림 시청 페이지
+- 메인 시청: https://ai.gzonesoft.com:17937/watch.html
+- 간단 시청: https://ai.gzonesoft.com:17937/simple.html
+- 오버레이 테스트: https://ai.gzonesoft.com:17937/overlay-test.html
+
+### RTMP 스트리밍
+- RTMP 주소: rtmp://ai.gzonesoft.com:17935/live
+- 스트림 키: [사용자 지정] (예: 1122, 4426)
+- FLV 시청: https://ai.gzonesoft.com:18002/live/[스트림키].flv
+
+## 📱 DJI 드론 연결 설정
+
+### DJI RC2 (권장설정)
+- 해상도: 720p
+- 프레임레이트: 30fps
+- 비트레이트: 2Mbps
+- 오디오: 활성화 필수
+
+### DJI RC Pro (4K 지원)
+- 해상도: 4K (3840x2160)
+- 프레임레이트: 60fps
+- 비트레이트: 15Mbps
+- 저지연 모드: 활성화
+
+### Smart Controller
+- 해상도: 1080p
+- 프레임레이트: 30fps  
+- 비트레이트: 8Mbps
+
+## 🎯 새로운 오버레이 기능
+
+### 자동 표시 항목
+- 좌측 상단: 서비스명 (그라디언트 효과)
+- 우측 하단: 실시간 시간 + 날짜 (반투명 배경)
+- 1초마다 자동 업데이트
+
+### 오버레이 설정 방법
+1. 서비스명 변경: 시청 페이지의 편집 버튼(🖋️) 클릭
+2. 고급 설정: overlay-test.html 페이지 접속
+3. 프리셋: 미니멀/전체표시/방송용 선택 가능
+
+## 🔧 서비스 상태 확인
+
+### 포트 사용 확인
+```bash
+lsof -i :17935,17936,17937,18001,18002
+```
+
+### 프로세스 상태 확인
+```bash
+ps aux | grep node
+```
+
+### 서버 로그 확인 (실시간)
+```bash
+cd /Users/gzonesoft/SinabroG-Stream-S1
+npm start
+# 또는 개발 모드로
+npm run dev
+```
+
+## 🚨 문제 해결
+
+### 포트 충돌 해결
+```bash
+# 모든 관련 포트 종료
+sudo lsof -ti:17935,17936,17937,18001,18002 | xargs kill -9
+```
+
+### 의존성 재설치
+```bash
+cd /Users/gzonesoft/SinabroG-Stream-S1
+rm -rf node_modules package-lock.json
+npm install
+```
+
+### 방화벽 설정 (macOS)
+```bash
+# 포트 허용 추가 (필요시)
+sudo pfctl -f /etc/pf.conf
+```
+
+## 📊 성능 최적화
+
+### 메모리 증가 실행 (대용량 트래픽)
+```bash
+node --max-old-space-size=4096 server.js
+```
+
+### PM2로 프로덕션 실행 (권장)
+```bash
+# PM2 설치
+npm install -g pm2
+
+# 서비스 시작
+pm2 start server.js --name "gzone-streaming"
+
+# 서비스 상태 확인
+pm2 status
+
+# 서비스 중지
+pm2 stop gzone-streaming
+
+# 서비스 재시작
+pm2 restart gzone-streaming
+```
+
+## 📈 모니터링
+
+### 실시간 스트림 상태
+- API: https://ai.gzonesoft.com:17937/api/streams
+- 웹UI: https://ai.gzonesoft.com:17937 (관리자 대시보드)
+
+### 서버 상태 체크
+- Health Check: https://ai.gzonesoft.com:17937/api/health
+- Stats API: https://ai.gzonesoft.com:17937/api/stats
+
+## 🎉 최신 업데이트 (v1.1)
+
+### 새로 추가된 기능
+✅ 실시간 시간정보 오버레이
+✅ 서비스명 커스터마이징
+✅ overlay-test.html 데모 페이지
+✅ 투명도 및 프리셋 설정
+✅ 모바일 반응형 오버레이
+
+### 업그레이드된 페이지
+✅ watch.html - 오버레이 + 편집 버튼
+✅ simple.html - 통합 웹 플레이어
+✅ viewer.js - 오버레이 관리 클래스
+
+---
+📝 마지막 업데이트: 2025년 9월 4일
+🔗 GitHub: https://github.com/gzonesoft/SinabroG-Stream-S1.git
+💡 문의: GZONESOFT 기술지원팀
