@@ -418,19 +418,23 @@ class StreamViewer {
             return;
         }
         
-        console.log('📡 API 호출 시작: /api/overlay-data');
+        const currentTime = new Date().toLocaleTimeString();
+        console.log(`📡 [${currentTime}] API 호출 시작: /api/overlay-data`);
         
         try {
-            // 서버에서 데이터 가져오기
-            const response = await fetch('https://ai.gzonesoft.com:17937/api/overlay-data', {
+            // 서버에서 데이터 가져오기 - 캐시 방지를 위한 타임스탬프 추가
+            const timestamp = Date.now();
+            const response = await fetch(`https://ai.gzonesoft.com:17937/api/overlay-data?_t=${timestamp}`, {
                 method: 'GET',
                 cache: 'no-cache',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
                 }
             });
             
-            console.log('📡 API 응답 상태:', response.status, response.statusText);
+            console.log(`📡 [${currentTime}] API 응답 상태:`, response.status, response.statusText);
             
             if (!response.ok) {
                 console.error('❌ 오버레이 데이터 API 호출 실패:', response.status, response.statusText);
@@ -440,17 +444,17 @@ class StreamViewer {
             }
             
             const data = await response.json();
-            console.log('📊 받은 데이터:', data);
+            console.log(`📊 [${currentTime}] 받은 데이터:`, data);
             
             // 데이터 변경 감지 (성능 최적화)
             const currentDataHash = JSON.stringify(data);
             if (currentDataHash === this.lastDataHash) {
-                console.log('📊 데이터 변경없음 - 업데이트 생략');
+                console.log(`📊 [${currentTime}] 데이터 변경없음 - 업데이트 생략`);
                 return; // 데이터 변경없음
             }
-            this.lastDataHash = currentDataHash;
             
-            console.log('🔄 DOM 업데이트 시작');
+            console.log(`🔄 [${currentTime}] 데이터 변경감지 - DOM 업데이트 시작`);
+            this.lastDataHash = currentDataHash;
             
             // 각 데이터 필드 업데이트
             const fields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED', 'AZIMUTH', 'TILT', 'ROLL'];
@@ -482,23 +486,29 @@ class StreamViewer {
                     
                     const oldValue = valueElement.textContent;
                     valueElement.textContent = formattedValue;
-                    console.log(`📝 ${field}: "${oldValue}" -> "${formattedValue}"`);
+                    
+                    // 값이 변경된 경우만 로그 출력
+                    if (oldValue !== formattedValue) {
+                        console.log(`📝 [${currentTime}] ${field}: "${oldValue}" -> "${formattedValue}"`);
+                    }
+                    
                     updatedCount++;
                 } else {
-                    console.warn(`⚠️  필드 "${field}"를 위한 요소를 찾을 수 없거나 데이터가 없습니다`);
+                    console.warn(`⚠️  [${currentTime}] 필드 "${field}"를 위한 요소를 찾을 수 없거나 데이터가 없습니다`);
                 }
             });
             
-            console.log(`✅ 데이터 오버레이 업데이트 완료: ${updatedCount}개 필드 업데이트, 시간: ${new Date().toLocaleTimeString()}`);
+            console.log(`✅ [${currentTime}] 데이터 오버레이 업데이트 완료: ${updatedCount}개 필드 업데이트`);
+            console.log('----------------------------------------');
             
             // 성공 표시 (오버레이에 녹색 테두리 잠깐 표시)
             dataOverlay.style.borderColor = '#28a745';
             setTimeout(() => {
-                dataOverlay.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+                dataOverlay.style.borderColor = 'rgba(255, 255, 255, 0.3)';
             }, 200);
             
         } catch (error) {
-            console.error('❌ 데이터 오버레이 업데이트 오류:', error);
+            console.error(`❌ [${currentTime}] 데이터 오버레이 업데이트 오류:`, error);
             this.showDataOverlayError(dataOverlay, 'Network Error');
         }
     }
@@ -525,7 +535,7 @@ class StreamViewer {
             if (errorRow && errorRow.parentElement) {
                 errorRow.remove();
             }
-            dataOverlay.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+            dataOverlay.style.borderColor = 'rgba(255, 255, 255, 0.3)';
         }, 3000);
     }
     
