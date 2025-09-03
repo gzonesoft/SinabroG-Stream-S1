@@ -422,7 +422,7 @@ class StreamViewer {
         
         try {
             // 서버에서 데이터 가져오기
-            const response = await fetch('/api/overlay-data', {
+            const response = await fetch('https://ai.gzonesoft.com:17937/api/overlay-data', {
                 method: 'GET',
                 cache: 'no-cache',
                 headers: {
