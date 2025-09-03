@@ -39,7 +39,21 @@ class StreamViewer {
     }
     
     loadStream(streamKey) {
-        const webPlayer = document.getElementById('webPlayer');
+        // webPlayer 또는 다른 플레이어 컨테이너 찾기
+        let webPlayer = document.getElementById('webPlayer');
+        if (!webPlayer) {
+            webPlayer = document.getElementById('simpleWebPlayer');
+        }
+        if (!webPlayer) {
+            webPlayer = document.querySelector('.ratio.ratio-16x9');
+        }
+        
+        if (!webPlayer) {
+            console.error('플레이어 컨테이너를 찾을 수 없습니다');
+            this.showAlert('플레이어를 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
         const flvUrl = `https://ai.gzonesoft.com:18002/live/${streamKey}.flv`;
         
         // 기존 HLS 정리
@@ -47,6 +61,9 @@ class StreamViewer {
             this.hls.destroy();
             this.hls = null;
         }
+        
+        // 기존 오버레이 업데이트 중지
+        this.stopOverlayUpdate();
         
         // 로딩 표시
         webPlayer.innerHTML = `
@@ -213,7 +230,19 @@ class StreamViewer {
     }
     
     handleStreamError(streamKey, flvUrl, message = '스트림 연결에 실패했습니다.') {
-        const webPlayer = document.getElementById('webPlayer');
+        // webPlayer 또는 다른 플레이어 컨테이너 찾기
+        let webPlayer = document.getElementById('webPlayer');
+        if (!webPlayer) {
+            webPlayer = document.getElementById('simpleWebPlayer');
+        }
+        if (!webPlayer) {
+            webPlayer = document.querySelector('.ratio.ratio-16x9');
+        }
+        
+        if (!webPlayer) {
+            console.error('플레이어 컨테이너를 찾을 수 없습니다');
+            return;
+        }
         
         webPlayer.innerHTML = `
             <div class="text-white text-center p-4">
@@ -281,7 +310,12 @@ class StreamViewer {
         this.stopOverlayUpdate(); // 기존 인터벌 정리
         
         const timeOverlay = container.querySelector('.overlay-time');
-        if (!timeOverlay) return;
+        if (!timeOverlay) {
+            console.warn('시간 오버레이 요소를 찾을 수 없습니다');
+            return;
+        }
+        
+        console.log('오버레이 업데이트 시작'); // 디버깅용 로그
         
         this.timeUpdateInterval = setInterval(() => {
             this.updateTimeOverlay(timeOverlay);
@@ -301,6 +335,11 @@ class StreamViewer {
     
     // 시간 오버레이 업데이트
     updateTimeOverlay(timeOverlay) {
+        if (!timeOverlay) {
+            console.warn('timeOverlay가 존재하지 않습니다');
+            return;
+        }
+        
         const now = new Date();
         
         // 현재 시간 포맷팅 (24시간 형식)
@@ -324,10 +363,15 @@ class StreamViewer {
         
         if (timeElement) {
             timeElement.textContent = timeString;
+            console.log('시간 업데이트:', timeString); // 디버깅용 로그
+        } else {
+            console.warn('시간 요소를 찾을 수 없습니다');
         }
         
         if (dateElement) {
             dateElement.textContent = dateString;
+        } else {
+            console.warn('날짜 요소를 찾을 수 없습니다');
         }
     }
     
@@ -461,6 +505,60 @@ window.addEventListener('beforeunload', () => {
         }
         streamViewer.stopOverlayUpdate();
     }
+});
+
+// 전역 오버레이 업데이트 함수 (백업용)
+function startGlobalOverlayUpdate() {
+    // 모든 페이지의 오버레이 요소들을 찾아서 업데이트
+    setInterval(() => {
+        const timeOverlays = document.querySelectorAll('.overlay-time');
+        timeOverlays.forEach(timeOverlay => {
+            if (timeOverlay && timeOverlay.style.display !== 'none') {
+                updateGlobalTimeOverlay(timeOverlay);
+            }
+        });
+    }, 1000);
+}
+
+function updateGlobalTimeOverlay(timeOverlay) {
+    const now = new Date();
+    
+    const timeString = now.toLocaleTimeString('ko-KR', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    
+    const dateString = now.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'short'
+    });
+    
+    const timeElement = timeOverlay.querySelector('.overlay-current-time');
+    const dateElement = timeOverlay.querySelector('.overlay-date');
+    
+    if (timeElement) {
+        timeElement.textContent = timeString;
+    }
+    
+    if (dateElement) {
+        dateElement.textContent = dateString;
+    }
+}
+
+// 페이지 로드 후 전역 업데이트 시작
+document.addEventListener('DOMContentLoaded', () => {
+    // 3초 후에 전역 오버레이 업데이트 시작 (인스턴스별 업데이트와 충돌 방지)
+    setTimeout(() => {
+        const hasActiveOverlays = document.querySelectorAll('.overlay-time').length > 0;
+        if (hasActiveOverlays) {
+            console.log('전역 오버레이 업데이트 시작');
+            startGlobalOverlayUpdate();
+        }
+    }, 3000);
 });
 
 // 오버레이 설정 함수들 (전역)

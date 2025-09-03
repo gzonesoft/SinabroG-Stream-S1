@@ -310,7 +310,12 @@
                 this.stopOverlayUpdate();
                 
                 const timeOverlay = container.querySelector('.overlay-time');
-                if (!timeOverlay) return;
+                if (!timeOverlay) {
+                    console.warn('시간 오버레이 요소를 찾을 수 없습니다 (simple.html)');
+                    return;
+                }
+                
+                console.log('Simple 오버레이 업데이트 시작');
                 
                 this.timeUpdateInterval = setInterval(() => {
                     this.updateTimeOverlay(timeOverlay);
@@ -323,10 +328,16 @@
                 if (this.timeUpdateInterval) {
                     clearInterval(this.timeUpdateInterval);
                     this.timeUpdateInterval = null;
+                    console.log('Simple 오버레이 업데이트 중지');
                 }
             }
             
             updateTimeOverlay(timeOverlay) {
+                if (!timeOverlay) {
+                    console.warn('timeOverlay가 존재하지 않습니다 (simple.html)');
+                    return;
+                }
+                
                 const now = new Date();
                 
                 const timeString = now.toLocaleTimeString('ko-KR', {
@@ -346,8 +357,18 @@
                 const timeElement = timeOverlay.querySelector('.overlay-current-time');
                 const dateElement = timeOverlay.querySelector('.overlay-date');
                 
-                if (timeElement) timeElement.textContent = timeString;
-                if (dateElement) dateElement.textContent = dateString;
+                if (timeElement) {
+                    timeElement.textContent = timeString;
+                    console.log('Simple 시간 업데이트:', timeString);
+                } else {
+                    console.warn('Simple 시간 요소를 찾을 수 없습니다');
+                }
+                
+                if (dateElement) {
+                    dateElement.textContent = dateString;
+                } else {
+                    console.warn('Simple 날짜 요소를 찾을 수 없습니다');
+                }
             }
             
             setServiceName(name) {
