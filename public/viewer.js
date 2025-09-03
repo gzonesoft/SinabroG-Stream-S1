@@ -5,7 +5,9 @@ class StreamViewer {
         this.currentStreamKey = null;
         this.hls = null;
         this.timeUpdateInterval = null;
+        this.dataOverlayInterval = null;
         this.serviceName = 'GZONESOFT LIVE';
+        this.lastDataHash = null;
         this.init();
     }
     
@@ -64,6 +66,7 @@ class StreamViewer {
         
         // 기존 오버레이 업데이트 중지
         this.stopOverlayUpdate();
+        this.stopDataOverlayUpdate();
         
         // 로딩 표시
         webPlayer.innerHTML = `
@@ -130,12 +133,14 @@ class StreamViewer {
                 console.log('FLV.js metadata loaded');
                 video.muted = false;
                 this.startOverlayUpdate(videoContainer);
+                this.startDataOverlayUpdate(videoContainer);
                 this.showAlert('FLV 스트림이 시작되었습니다!', 'success');
             });
             
             flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
                 console.error('FLV.js Error:', errorType, errorDetail);
                 this.stopOverlayUpdate();
+                this.stopDataOverlayUpdate();
                 this.fallbackToNativeFLV(streamKey, flvUrl, webPlayer);
             });
             
@@ -145,6 +150,7 @@ class StreamViewer {
             } catch (error) {
                 console.error('FLV.js failed to start:', error);
                 this.stopOverlayUpdate();
+                this.stopDataOverlayUpdate();
                 this.fallbackToNativeFLV(streamKey, flvUrl, webPlayer);
             }
             
@@ -171,12 +177,14 @@ class StreamViewer {
             console.log('Native FLV ready');
             video.muted = false;
             this.startOverlayUpdate(videoContainer);
+            this.startDataOverlayUpdate(videoContainer);
             this.showAlert('네이티브 FLV 스트림이 시작되었습니다!', 'success');
         });
         
         video.addEventListener('error', (e) => {
             console.error('Native FLV Error:', e);
             this.stopOverlayUpdate();
+            this.stopDataOverlayUpdate();
             this.handleStreamError(streamKey, flvUrl, '브라우저에서 FLV 재생을 지원하지 않습니다.');
         });
         
@@ -184,6 +192,7 @@ class StreamViewer {
         setTimeout(() => {
             if (video.readyState === 0) {
                 this.stopOverlayUpdate();
+                this.stopDataOverlayUpdate();
                 this.handleStreamError(streamKey, flvUrl, 'FLV 스트림 로딩 타임아웃');
             }
         }, 5000);
@@ -210,6 +219,7 @@ class StreamViewer {
                 console.log('HLS Stream loaded successfully');
                 video.muted = false;
                 this.startOverlayUpdate(videoContainer);
+                this.startDataOverlayUpdate(videoContainer);
                 this.showAlert('HLS 스트림이 시작되었습니다!', 'success');
             });
             
@@ -217,6 +227,7 @@ class StreamViewer {
                 console.error('HLS Error:', data);
                 if (data.fatal) {
                     this.stopOverlayUpdate();
+                    this.stopDataOverlayUpdate();
                     this.handleStreamError(streamKey, `http://ai.gzonesoft.com:18001/live/${streamKey}.flv`);
                 }
             });
@@ -298,9 +309,44 @@ class StreamViewer {
             <div class="overlay-date">----년 --월 --일</div>
         `;
         
+        // 데이터 오버레이
+        const dataOverlay = document.createElement('div');
+        dataOverlay.className = 'video-overlay overlay-data overlay-fade-in';
+        dataOverlay.innerHTML = `
+            <div class="data-row">
+                <span class="data-label">위도:</span>
+                <span class="data-value" data-field="LATITUDE">--</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">경도:</span>
+                <span class="data-value" data-field="LONGITUDE">--</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">고도:</span>
+                <span class="data-value" data-field="ALTITUDE">-- m</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">속도:</span>
+                <span class="data-value" data-field="SPEED">-- m/s</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">방위각:</span>
+                <span class="data-value" data-field="AZIMUTH">--°</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">틸트:</span>
+                <span class="data-value" data-field="TILT">--°</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">롤:</span>
+                <span class="data-value" data-field="ROLL">--°</span>
+            </div>
+        `;
+        
         container.appendChild(video);
         container.appendChild(serviceOverlay);
         container.appendChild(timeOverlay);
+        container.appendChild(dataOverlay);
         
         return container;
     }
@@ -330,6 +376,100 @@ class StreamViewer {
         if (this.timeUpdateInterval) {
             clearInterval(this.timeUpdateInterval);
             this.timeUpdateInterval = null;
+        }
+    }
+    
+    // 데이터 오버레이 업데이트 시작
+    startDataOverlayUpdate(container) {
+        this.stopDataOverlayUpdate(); // 기존 인터벌 정리
+        
+        const dataOverlay = container.querySelector('.overlay-data');
+        if (!dataOverlay) {
+            console.warn('데이터 오버레이 요소를 찾을 수 없습니다');
+            return;
+        }
+        
+        console.log('데이터 오버레이 업데이트 시작'); // 디버깅용 로그
+        
+        this.dataOverlayInterval = setInterval(() => {
+            this.updateDataOverlay(dataOverlay);
+        }, 1000);
+        
+        // 즉시 한 번 업데이트
+        this.updateDataOverlay(dataOverlay);
+    }
+    
+    // 데이터 오버레이 업데이트 중지
+    stopDataOverlayUpdate() {
+        if (this.dataOverlayInterval) {
+            clearInterval(this.dataOverlayInterval);
+            this.dataOverlayInterval = null;
+        }
+    }
+    
+    // 데이터 오버레이 업데이트
+    async updateDataOverlay(dataOverlay) {
+        if (!dataOverlay) {
+            console.warn('dataOverlay가 존재하지 않습니다');
+            return;
+        }
+        
+        try {
+            // 서버에서 데이터 가져오기
+            const response = await fetch('/api/overlay-data', {
+                method: 'GET',
+                cache: 'no-cache'
+            });
+            
+            if (!response.ok) {
+                console.warn('오버레이 데이터를 가져오는데 실패했습니다:', response.statusText);
+                return;
+            }
+            
+            const data = await response.json();
+            
+            // 데이터 변경 감지 (성능 최적화)
+            const currentDataHash = JSON.stringify(data);
+            if (currentDataHash === this.lastDataHash) {
+                return; // 데이터 변경없음
+            }
+            this.lastDataHash = currentDataHash;
+            
+            // 각 데이터 필드 업데이트
+            const fields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED', 'AZIMUTH', 'TILT', 'ROLL'];
+            
+            fields.forEach(field => {
+                const valueElement = dataOverlay.querySelector(`[data-field="${field}"]`);
+                if (valueElement && data[field] !== undefined) {
+                    let formattedValue = data[field];
+                    
+                    // 데이터 포맷팅
+                    switch(field) {
+                        case 'LATITUDE':
+                        case 'LONGITUDE':
+                            formattedValue = parseFloat(data[field]).toFixed(6);
+                            break;
+                        case 'ALTITUDE':
+                            formattedValue = parseFloat(data[field]).toFixed(1) + ' m';
+                            break;
+                        case 'SPEED':
+                            formattedValue = parseFloat(data[field]).toFixed(1) + ' m/s';
+                            break;
+                        case 'AZIMUTH':
+                        case 'TILT':
+                        case 'ROLL':
+                            formattedValue = parseFloat(data[field]).toFixed(1) + '°';
+                            break;
+                    }
+                    
+                    valueElement.textContent = formattedValue;
+                }
+            });
+            
+            console.log('데이터 오버레이 업데이트 완료:', new Date().toLocaleTimeString());
+            
+        } catch (error) {
+            console.error('데이터 오버레이 업데이트 오류:', error);
         }
     }
     
@@ -504,6 +644,7 @@ window.addEventListener('beforeunload', () => {
             streamViewer.hls.destroy();
         }
         streamViewer.stopOverlayUpdate();
+        streamViewer.stopDataOverlayUpdate();
     }
 });
 

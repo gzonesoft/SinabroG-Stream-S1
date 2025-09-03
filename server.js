@@ -269,6 +269,38 @@ app.post('/api/generate-key', (req, res) => {
   res.json({ streamKey });
 });
 
+// 데이터 오버레이 API
+app.get('/api/overlay-data', (req, res) => {
+  try {
+    const dataPath = path.join(__dirname, 'data_overly.json');
+    
+    // 파일 존재 확인
+    if (!fs.existsSync(dataPath)) {
+      return res.status(404).json({ 
+        error: 'Data overlay file not found',
+        path: dataPath 
+      });
+    }
+    
+    // 파일 읽기
+    const rawData = fs.readFileSync(dataPath, 'utf8');
+    const overlayData = JSON.parse(rawData);
+    
+    // 타임스탬프 추가 (클라이언트에서 변경사항 감지용)
+    const stats = fs.statSync(dataPath);
+    overlayData._lastModified = stats.mtime.toISOString();
+    overlayData._timestamp = new Date().toISOString();
+    
+    res.json(overlayData);
+  } catch (error) {
+    console.error('Error reading overlay data:', error);
+    res.status(500).json({ 
+      error: 'Failed to read overlay data',
+      message: error.message 
+    });
+  }
+});
+
 // Socket.IO 연결 처리
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
