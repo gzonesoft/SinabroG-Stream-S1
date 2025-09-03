@@ -357,17 +357,19 @@ class StreamViewer {
         
         const timeOverlay = container.querySelector('.overlay-time');
         if (!timeOverlay) {
-            console.warn('시간 오버레이 요소를 찾을 수 없습니다');
+            console.error('❌ 시간 오버레이 요소를 찾을 수 없습니다');
             return;
         }
         
-        console.log('오버레이 업데이트 시작'); // 디버깅용 로그
+        console.log('✅ 시간 오버레이 업데이트 시작'); // 디버깅용 로그
         
         this.timeUpdateInterval = setInterval(() => {
+            console.log('⏰ 시간 오버레이 업데이트 시도 중...', new Date().toLocaleTimeString());
             this.updateTimeOverlay(timeOverlay);
         }, 1000);
         
         // 즉시 한 번 업데이트
+        console.log('⚡ 초기 시간 오버레이 업데이트 실행');
         this.updateTimeOverlay(timeOverlay);
     }
     
@@ -530,7 +532,7 @@ class StreamViewer {
     // 시간 오버레이 업데이트
     updateTimeOverlay(timeOverlay) {
         if (!timeOverlay) {
-            console.warn('timeOverlay가 존재하지 않습니다');
+            console.warn('❌ timeOverlay가 존재하지 않습니다');
             return;
         }
         
@@ -557,15 +559,16 @@ class StreamViewer {
         
         if (timeElement) {
             timeElement.textContent = timeString;
-            console.log('시간 업데이트:', timeString); // 디버깅용 로그
+            console.log('⏰ 시간 업데이트:', timeString); // 디버깅용 로그
         } else {
-            console.warn('시간 요소를 찾을 수 없습니다');
+            console.warn('⚠️  시간 요소를 찾을 수 없습니다');
         }
         
         if (dateElement) {
             dateElement.textContent = dateString;
+            console.log('📅 날짜 업데이트:', dateString); // 디버깅용 로그
         } else {
-            console.warn('날짜 요소를 찾을 수 없습니다');
+            console.warn('⚠️  날짜 요소를 찾을 수 없습니다');
         }
     }
     
