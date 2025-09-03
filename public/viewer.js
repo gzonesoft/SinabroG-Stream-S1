@@ -385,17 +385,19 @@ class StreamViewer {
         
         const dataOverlay = container.querySelector('.overlay-data');
         if (!dataOverlay) {
-            console.warn('데이터 오버레이 요소를 찾을 수 없습니다');
+            console.error('❌ 데이터 오버레이 요소를 찾을 수 없습니다');
             return;
         }
         
-        console.log('데이터 오버레이 업데이트 시작'); // 디버깅용 로그
+        console.log('✅ 데이터 오버레이 업데이트 시작'); // 디버깅용 로그
         
         this.dataOverlayInterval = setInterval(() => {
+            console.log('🔄 데이터 오버레이 업데이트 시도 중...', new Date().toLocaleTimeString());
             this.updateDataOverlay(dataOverlay);
         }, 1000);
         
         // 즉시 한 번 업데이트
+        console.log('⚡ 초기 데이터 오버레이 업데이트 실행');
         this.updateDataOverlay(dataOverlay);
     }
     
@@ -410,33 +412,47 @@ class StreamViewer {
     // 데이터 오버레이 업데이트
     async updateDataOverlay(dataOverlay) {
         if (!dataOverlay) {
-            console.warn('dataOverlay가 존재하지 않습니다');
+            console.error('❌ dataOverlay가 존재하지 않습니다');
             return;
         }
+        
+        console.log('📡 API 호출 시작: /api/overlay-data');
         
         try {
             // 서버에서 데이터 가져오기
             const response = await fetch('/api/overlay-data', {
                 method: 'GET',
-                cache: 'no-cache'
+                cache: 'no-cache',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
             });
             
+            console.log('📡 API 응답 상태:', response.status, response.statusText);
+            
             if (!response.ok) {
-                console.warn('오버레이 데이터를 가져오는데 실패했습니다:', response.statusText);
+                console.error('❌ 오버레이 데이터 API 호출 실패:', response.status, response.statusText);
+                // 오류 상태를 오버레이에 표시
+                this.showDataOverlayError(dataOverlay, `API Error: ${response.status}`);
                 return;
             }
             
             const data = await response.json();
+            console.log('📊 받은 데이터:', data);
             
             // 데이터 변경 감지 (성능 최적화)
             const currentDataHash = JSON.stringify(data);
             if (currentDataHash === this.lastDataHash) {
+                console.log('📊 데이터 변경없음 - 업데이트 생략');
                 return; // 데이터 변경없음
             }
             this.lastDataHash = currentDataHash;
             
+            console.log('🔄 DOM 업데이트 시작');
+            
             // 각 데이터 필드 업데이트
             const fields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED', 'AZIMUTH', 'TILT', 'ROLL'];
+            let updatedCount = 0;
             
             fields.forEach(field => {
                 const valueElement = dataOverlay.querySelector(`[data-field="${field}"]`);
@@ -462,15 +478,53 @@ class StreamViewer {
                             break;
                     }
                     
+                    const oldValue = valueElement.textContent;
                     valueElement.textContent = formattedValue;
+                    console.log(`📝 ${field}: "${oldValue}" -> "${formattedValue}"`);
+                    updatedCount++;
+                } else {
+                    console.warn(`⚠️  필드 "${field}"를 위한 요소를 찾을 수 없거나 데이터가 없습니다`);
                 }
             });
             
-            console.log('데이터 오버레이 업데이트 완료:', new Date().toLocaleTimeString());
+            console.log(`✅ 데이터 오버레이 업데이트 완료: ${updatedCount}개 필드 업데이트, 시간: ${new Date().toLocaleTimeString()}`);
+            
+            // 성공 표시 (오버레이에 녹색 테두리 잠깐 표시)
+            dataOverlay.style.borderColor = '#28a745';
+            setTimeout(() => {
+                dataOverlay.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+            }, 200);
             
         } catch (error) {
-            console.error('데이터 오버레이 업데이트 오류:', error);
+            console.error('❌ 데이터 오버레이 업데이트 오류:', error);
+            this.showDataOverlayError(dataOverlay, 'Network Error');
         }
+    }
+    
+    // 데이터 오버레이 에러 표시
+    showDataOverlayError(dataOverlay, errorMessage) {
+        // 에러 상태 표시 (빨간 테두리)
+        dataOverlay.style.borderColor = '#dc3545';
+        
+        // 에러 메시지를 마지막 행에 표시
+        let errorRow = dataOverlay.querySelector('.error-row');
+        if (!errorRow) {
+            errorRow = document.createElement('div');
+            errorRow.className = 'data-row error-row';
+            errorRow.style.color = '#dc3545';
+            errorRow.style.fontSize = '0.8em';
+            dataOverlay.appendChild(errorRow);
+        }
+        
+        errorRow.innerHTML = `<span class="data-label">상태:</span><span class="data-value">${errorMessage}</span>`;
+        
+        // 3초 후 에러 표시 제거
+        setTimeout(() => {
+            if (errorRow && errorRow.parentElement) {
+                errorRow.remove();
+            }
+            dataOverlay.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+        }, 3000);
     }
     
     // 시간 오버레이 업데이트
