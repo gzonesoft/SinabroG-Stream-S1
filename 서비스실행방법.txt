@@ -1,0 +1,4 @@
+
+Start service..
+
+cd /Users/gzonesoft/MOKWON-WEB_AI/dji && npm start

@@ -1,0 +1,365 @@
+// GZONESOFT 스트림 시청 페이지 JavaScript
+
+class StreamViewer {
+    constructor() {
+        this.currentStreamKey = null;
+        this.hls = null;
+        this.init();
+    }
+    
+    init() {
+        // URL에서 스트림 키 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const streamKey = urlParams.get('key');
+        
+        if (streamKey) {
+            document.getElementById('streamKeyInput').value = streamKey;
+            this.startViewing(streamKey);
+        }
+    }
+    
+    startViewing(streamKey = null) {
+        if (!streamKey) {
+            streamKey = document.getElementById('streamKeyInput').value.trim();
+        }
+        
+        if (!streamKey) {
+            this.showAlert('스트림 키를 입력해주세요.', 'warning');
+            return;
+        }
+        
+        this.currentStreamKey = streamKey;
+        this.loadStream(streamKey);
+        
+        // URL 업데이트 (뒤로가기 지원)
+        const newUrl = `${window.location.pathname}?key=${streamKey}`;
+        window.history.pushState({streamKey}, '', newUrl);
+    }
+    
+    loadStream(streamKey) {
+        const webPlayer = document.getElementById('webPlayer');
+        const flvUrl = `https://ai.gzonesoft.com:18002/live/${streamKey}.flv`;
+        
+        // 기존 HLS 정리
+        if (this.hls) {
+            this.hls.destroy();
+            this.hls = null;
+        }
+        
+        // 로딩 표시
+        webPlayer.innerHTML = `
+            <div class="text-white text-center">
+                <div class="spinner-border mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5>FLV 스트림을 로딩중입니다...</h5>
+                <p>스트림 키: <strong>${streamKey}</strong></p>
+            </div>
+        `;
+        
+        // FLV 스트림으로 직접 시도 (node-media-server 기본 지원)
+        this.loadFLVStream(streamKey, flvUrl, webPlayer);
+    }
+    
+    tryFLVFirst(streamKey, flvUrl, webPlayer) {
+        // FLV 스트림 존재 확인
+        fetch(flvUrl, { method: 'HEAD' })
+            .then(response => {
+                if (response.ok) {
+                    this.loadFLVStream(streamKey, flvUrl, webPlayer);
+                } else {
+                    throw new Error('FLV stream not available');
+                }
+            })
+            .catch(error => {
+                console.log('FLV not available, trying HLS...', error);
+                this.tryHLSStream(streamKey, webPlayer);
+            });
+    }
+    
+    loadFLVStream(streamKey, flvUrl, webPlayer) {
+        // FLV.js 지원 확인
+        if (flvjs && flvjs.isSupported()) {
+            const video = document.createElement('video');
+            video.controls = true;
+            video.autoplay = true;
+            video.muted = true;
+            video.className = 'w-100 h-100';
+            video.style.objectFit = 'contain';
+            
+            webPlayer.innerHTML = '';
+            webPlayer.appendChild(video);
+            
+            // FLV.js 플레이어 생성
+            const flvPlayer = flvjs.createPlayer({
+                type: 'flv',
+                url: flvUrl,
+                isLive: true
+            }, {
+                enableWorker: false,
+                enableStashBuffer: false,
+                stashInitialSize: 128,
+                isLive: true,
+                lazyLoad: false,
+                lazyLoadMaxDuration: 3 * 60,
+                seekType: 'range'
+            });
+            
+            flvPlayer.attachMediaElement(video);
+            
+            flvPlayer.on(flvjs.Events.LOADING_COMPLETE, () => {
+                console.log('FLV.js loading complete');
+            });
+            
+            flvPlayer.on(flvjs.Events.LOADED_METADATA, () => {
+                console.log('FLV.js metadata loaded');
+                video.muted = false;
+                this.showAlert('FLV 스트림이 시작되었습니다!', 'success');
+            });
+            
+            flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
+                console.error('FLV.js Error:', errorType, errorDetail);
+                this.fallbackToNativeFLV(streamKey, flvUrl, webPlayer);
+            });
+            
+            try {
+                flvPlayer.load();
+                flvPlayer.play();
+            } catch (error) {
+                console.error('FLV.js failed to start:', error);
+                this.fallbackToNativeFLV(streamKey, flvUrl, webPlayer);
+            }
+            
+        } else {
+            // FLV.js 미지원시 네이티브 시도
+            this.fallbackToNativeFLV(streamKey, flvUrl, webPlayer);
+        }
+    }
+    
+    fallbackToNativeFLV(streamKey, flvUrl, webPlayer) {
+        // HTML5 video로 FLV 시도 (일부 브라우저에서 작동)
+        const video = document.createElement('video');
+        video.controls = true;
+        video.autoplay = true;
+        video.muted = true;
+        video.className = 'w-100 h-100';
+        video.style.objectFit = 'contain';
+        video.src = flvUrl;
+        
+        webPlayer.innerHTML = '';
+        webPlayer.appendChild(video);
+        
+        video.addEventListener('loadstart', () => {
+            console.log('Native FLV loading...');
+        });
+        
+        video.addEventListener('canplay', () => {
+            console.log('Native FLV ready');
+            video.muted = false;
+            this.showAlert('네이티브 FLV 스트림이 시작되었습니다!', 'success');
+        });
+        
+        video.addEventListener('error', (e) => {
+            console.error('Native FLV Error:', e);
+            this.handleStreamError(streamKey, flvUrl, '브라우저에서 FLV 재생을 지원하지 않습니다.');
+        });
+        
+        // 5초 후에도 재생이 안되면 오류 처리
+        setTimeout(() => {
+            if (video.readyState === 0) {
+                this.handleStreamError(streamKey, flvUrl, 'FLV 스트림 로딩 타임아웃');
+            }
+        }, 5000);
+    }
+    
+    tryHLSStream(streamKey, webPlayer) {
+        const hlsUrl = `http://ai.gzonesoft.com:18001/live/${streamKey}/index.m3u8`;
+        
+        if (Hls.isSupported()) {
+            this.hls = new Hls({
+                debug: false,
+                enableWorker: true,
+                lowLatencyMode: true,
+                backBufferLength: 90
+            });
+            
+            const video = document.createElement('video');
+            video.controls = true;
+            video.autoplay = true;
+            video.muted = true;
+            video.className = 'w-100 h-100';
+            video.style.objectFit = 'contain';
+            
+            webPlayer.innerHTML = '';
+            webPlayer.appendChild(video);
+            
+            this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                console.log('HLS Stream loaded successfully');
+                video.muted = false;
+                this.showAlert('HLS 스트림이 시작되었습니다!', 'success');
+            });
+            
+            this.hls.on(Hls.Events.ERROR, (event, data) => {
+                console.error('HLS Error:', data);
+                if (data.fatal) {
+                    this.handleStreamError(streamKey, `http://ai.gzonesoft.com:18001/live/${streamKey}.flv`);
+                }
+            });
+            
+            this.hls.loadSource(hlsUrl);
+            this.hls.attachMedia(video);
+            
+        } else {
+            this.handleStreamError(streamKey, `http://ai.gzonesoft.com:18001/live/${streamKey}.flv`, 'HLS를 지원하지 않는 브라우저입니다.');
+        }
+    }
+    
+    handleStreamError(streamKey, flvUrl, message = '스트림 연결에 실패했습니다.') {
+        const webPlayer = document.getElementById('webPlayer');
+        
+        webPlayer.innerHTML = `
+            <div class="text-white text-center p-4">
+                <i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i>
+                <h5>${message}</h5>
+                <p class="mb-3">다른 방법으로 시청해보세요:</p>
+                
+                <div class="d-grid gap-2 d-md-block">
+                    <button class="btn btn-primary" onclick="streamViewer.retryStream()">
+                        <i class="fas fa-redo me-2"></i>다시 시도
+                    </button>
+                    <button class="btn btn-outline-light" onclick="streamViewer.copyFLVUrl('${flvUrl}')">
+                        <i class="fas fa-copy me-2"></i>FLV URL 복사
+                    </button>
+                    <button class="btn btn-outline-light" onclick="showVLCGuide()">
+                        <i class="fas fa-play-circle me-2"></i>VLC 가이드
+                    </button>
+                </div>
+                
+                <div class="mt-3">
+                    <small class="text-muted">
+                        스트림이 활성 상태인지 확인하거나, VLC 등의 외부 플레이어를 사용해주세요.
+                    </small>
+                </div>
+            </div>
+        `;
+        
+        this.showAlert('웹 플레이어 연결 실패. 다른 방법을 시도해주세요.', 'warning');
+    }
+    
+    retryStream() {
+        if (this.currentStreamKey) {
+            this.loadStream(this.currentStreamKey);
+        }
+    }
+    
+    async copyFLVUrl(url) {
+        try {
+            await navigator.clipboard.writeText(url);
+            this.showAlert('FLV URL이 복사되었습니다!', 'success');
+        } catch (error) {
+            console.error('Failed to copy URL:', error);
+            this.showAlert('URL 복사에 실패했습니다.', 'error');
+        }
+    }
+    
+    showAlert(message, type) {
+        // 기존 알림 제거
+        const existingAlert = document.querySelector('.floating-alert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+        
+        // 새 알림 생성
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} floating-alert`;
+        alertDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        `;
+        
+        alertDiv.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // 3초 후 자동 제거
+        setTimeout(() => {
+            if (alertDiv.parentElement) {
+                alertDiv.remove();
+            }
+        }, 3000);
+    }
+}
+
+// 전역 함수들
+let streamViewer;
+
+// 페이지 로드시 초기화
+document.addEventListener('DOMContentLoaded', () => {
+    streamViewer = new StreamViewer();
+});
+
+// 시청 시작
+function startViewing() {
+    streamViewer.startViewing();
+}
+
+// 가이드 모달 표시
+function showVLCGuide() {
+    const modal = new bootstrap.Modal(document.getElementById('vlcGuideModal'));
+    modal.show();
+}
+
+function showOBSGuide() {
+    const modal = new bootstrap.Modal(document.getElementById('obsGuideModal'));
+    modal.show();
+}
+
+// VLC URL 복사
+function copyVLCUrl() {
+    const streamKey = document.getElementById('streamKeyInput').value.trim();
+    if (!streamKey) {
+        streamViewer.showAlert('먼저 스트림 키를 입력해주세요.', 'warning');
+        return;
+    }
+    
+    const vlcUrl = `http://ai.gzonesoft.com:18001/live/${streamKey}.flv`;
+    streamViewer.copyFLVUrl(vlcUrl);
+}
+
+// 키보드 이벤트
+document.addEventListener('keydown', (event) => {
+    // Enter: 스트림 시청 시작
+    if (event.key === 'Enter' && event.target.id === 'streamKeyInput') {
+        startViewing();
+    }
+    
+    // ESC: 전체화면 종료
+    if (event.key === 'Escape') {
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
+    }
+});
+
+// 뒤로가기/앞으로가기 지원
+window.addEventListener('popstate', (event) => {
+    if (event.state && event.state.streamKey) {
+        document.getElementById('streamKeyInput').value = event.state.streamKey;
+        streamViewer.startViewing(event.state.streamKey);
+    }
+});
+
+// 페이지 언로드시 정리
+window.addEventListener('beforeunload', () => {
+    if (streamViewer && streamViewer.hls) {
+        streamViewer.hls.destroy();
+    }
+});

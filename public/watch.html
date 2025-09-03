@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스트림 시청 - GZONESOFT</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4rem 0;
+            text-align: center;
+        }
+        .stream-card {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .stream-card:hover {
+            transform: translateY(-5px);
+        }
+        .method-icon {
+            font-size: 3rem;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="container">
+            <h1 class="display-4 mb-4">
+                <i class="fas fa-video me-3"></i>
+                GZONESOFT 라이브 스트림
+            </h1>
+            <p class="lead mb-4">다양한 방법으로 실시간 스트리밍을 시청하세요</p>
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="input-group input-group-lg">
+                        <input type="text" class="form-control" id="streamKeyInput" 
+                               placeholder="스트림 키를 입력하세요" 
+                               style="background: rgba(255,255,255,0.9);">
+                        <button class="btn btn-light" type="button" onclick="startViewing()">
+                            <i class="fas fa-play me-2"></i>
+                            시청하기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container py-5">
+        <!-- 웹 플레이어 섹션 -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card stream-card">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-desktop me-2"></i>
+                            웹 브라우저에서 시청
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="webPlayer" class="ratio ratio-16x9 bg-dark d-flex align-items-center justify-content-center mb-3">
+                            <div class="text-white text-center">
+                                <i class="fas fa-video fa-4x mb-3"></i>
+                                <h5>스트림 키를 입력하고 시청하기 버튼을 클릭하세요</h5>
+                                <p>HLS 지원 브라우저에서 바로 시청 가능합니다</p>
+                            </div>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>추천:</strong> Chrome, Safari, Edge 브라우저에서 최적의 시청 경험을 제공합니다.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 시청 방법 가이드 -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <h2 class="text-center mb-4">시청 방법</h2>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- 방법 1: 웹 브라우저 -->
+            <div class="col-md-4">
+                <div class="card stream-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-globe method-icon mb-3"></i>
+                        <h5 class="card-title">웹 브라우저</h5>
+                        <p class="card-text">
+                            가장 간단한 방법입니다. 위의 플레이어에서 바로 시청하세요.
+                        </p>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <strong>지원:</strong> Chrome, Safari, Edge<br>
+                                <strong>화질:</strong> 자동 조절
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 방법 2: VLC 플레이어 -->
+            <div class="col-md-4">
+                <div class="card stream-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-play-circle method-icon mb-3"></i>
+                        <h5 class="card-title">VLC 플레이어</h5>
+                        <p class="card-text">
+                            고화질 시청을 원하시면 VLC를 사용하세요.
+                        </p>
+                        <div class="mt-3">
+                            <button class="btn btn-primary btn-sm" onclick="showVLCGuide()">
+                                설정 방법
+                            </button>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <strong>URL 형식:</strong> FLV 스트림<br>
+                                <strong>지연시간:</strong> 최소
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 방법 3: OBS 시청 -->
+            <div class="col-md-4">
+                <div class="card stream-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-broadcast-tower method-icon mb-3"></i>
+                        <h5 class="card-title">OBS Studio</h5>
+                        <p class="card-text">
+                            방송인이라면 OBS의 소스로 추가해서 시청할 수 있습니다.
+                        </p>
+                        <div class="mt-3">
+                            <button class="btn btn-primary btn-sm" onclick="showOBSGuide()">
+                                설정 방법
+                            </button>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <strong>소스 타입:</strong> 미디어 소스<br>
+                                <strong>용도:</strong> 리액션 방송
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 상세 가이드 모달들 -->
+        <!-- VLC 가이드 모달 -->
+        <div class="modal fade" id="vlcGuideModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-play-circle me-2"></i>
+                            VLC로 스트림 시청하기
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="steps">
+                            <div class="step mb-4">
+                                <h6><span class="badge bg-primary me-2">1</span>VLC 플레이어 실행</h6>
+                                <p>VLC Media Player를 실행합니다. 없다면 <a href="https://www.videolan.org/vlc/" target="_blank">여기서 다운로드</a></p>
+                            </div>
+                            <div class="step mb-4">
+                                <h6><span class="badge bg-primary me-2">2</span>네트워크 스트림 열기</h6>
+                                <p><code>미디어</code> → <code>네트워크 스트림 열기</code> (Ctrl+N)</p>
+                            </div>
+                            <div class="step mb-4">
+                                <h6><span class="badge bg-primary me-2">3</span>스트림 URL 입력</h6>
+                                <p>다음 형식으로 URL을 입력하세요:</p>
+                                <div class="alert alert-secondary">
+                                    <code>http://ai.gzonesoft.com:18001/live/<span class="text-danger">[스트림키]</span>.flv</code>
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm" onclick="copyVLCUrl()">
+                                    <i class="fas fa-copy me-1"></i>
+                                    URL 복사 (스트림키 입력 후)
+                                </button>
+                            </div>
+                            <div class="step">
+                                <h6><span class="badge bg-primary me-2">4</span>재생</h6>
+                                <p><code>재생</code> 버튼을 클릭하면 스트림이 시작됩니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- OBS 가이드 모달 -->
+        <div class="modal fade" id="obsGuideModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-broadcast-tower me-2"></i>
+                            OBS로 스트림 가져오기
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="steps">
+                            <div class="step mb-4">
+                                <h6><span class="badge bg-primary me-2">1</span>소스 추가</h6>
+                                <p>OBS의 <code>소스</code> 패널에서 <code>+</code> 버튼 → <code>미디어 소스</code> 선택</p>
+                            </div>
+                            <div class="step mb-4">
+                                <h6><span class="badge bg-primary me-2">2</span>소스 이름 설정</h6>
+                                <p>적당한 이름을 입력하고 <code>확인</code></p>
+                            </div>
+                            <div class="step mb-4">
+                                <h6><span class="badge bg-primary me-2">3</span>스트림 URL 설정</h6>
+                                <p><code>로컬 파일</code> 체크 해제 후, 다음 URL 입력:</p>
+                                <div class="alert alert-secondary">
+                                    <code>http://ai.gzonesoft.com:18001/live/<span class="text-danger">[스트림키]</span>.flv</code>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <h6><span class="badge bg-primary me-2">4</span>완료</h6>
+                                <p><code>확인</code>을 누르면 스트림이 OBS 소스로 추가됩니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 푸터 -->
+    <footer class="bg-dark text-light py-4">
+        <div class="container text-center">
+            <p class="mb-0">
+                <i class="fas fa-video me-2"></i>
+                GZONESOFT 스트리밍 서비스 |
+                <a href="https://ai.gzonesoft.com:17937" class="text-light">관리자 페이지</a>
+            </p>
+            <small class="text-muted">실시간 스트리밍 · 고화질 · 저지연</small>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
+    <script src="viewer.js"></script>
+</body>
+</html>
