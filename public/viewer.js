@@ -8,6 +8,7 @@ class StreamViewer {
         this.dataOverlayInterval = null;
         this.serviceName = 'GZONESOFT LIVE';
         this.lastDataHash = null;
+        this.debugMode = false;
         this.init();
     }
     
@@ -424,7 +425,16 @@ class StreamViewer {
         try {
             // 서버에서 데이터 가져오기 - 캐시 방지를 위한 타임스탬프 추가
             const timestamp = Date.now();
-            const response = await fetch(`https://ai.gzonesoft.com:17937/api/overlay-data?_t=${timestamp}`, {
+            
+            // 현재 프로토콜에 맞는 API URL 생성
+            const protocol = window.location.protocol;
+            const hostname = window.location.hostname;
+            const port = protocol === 'https:' ? '17937' : '17936';
+            const apiUrl = `${protocol}//${hostname}:${port}/api/overlay-data?_t=${timestamp}`;
+            
+            console.log(`📡 [${new Date().toLocaleTimeString()}] API URL: ${apiUrl}`);
+            
+            const response = await fetch(apiUrl, {
                 method: 'GET',
                 cache: 'no-cache',
                 headers: {
@@ -462,6 +472,8 @@ class StreamViewer {
             
             fields.forEach(field => {
                 const valueElement = dataOverlay.querySelector(`[data-field="${field}"]`);
+                console.log(`🔍 [${currentTime}] 필드 "${field}" 검색:`, valueElement ? '찾음' : '없음');
+                
                 if (valueElement && data[field] !== undefined) {
                     let formattedValue = data[field];
                     
@@ -487,14 +499,25 @@ class StreamViewer {
                     const oldValue = valueElement.textContent;
                     valueElement.textContent = formattedValue;
                     
+                    // CSS 클래스로 값 변경 표시 (선택사항)
+                    if (oldValue !== formattedValue) {
+                        valueElement.classList.add('data-updated');
+                        setTimeout(() => {
+                            valueElement.classList.remove('data-updated');
+                        }, 1000);
+                    }
+                    
                     // 값이 변경된 경우만 로그 출력
                     if (oldValue !== formattedValue) {
                         console.log(`📝 [${currentTime}] ${field}: "${oldValue}" -> "${formattedValue}"`);
                     }
                     
                     updatedCount++;
+                } else if (!valueElement) {
+                    console.error(`❌ [${currentTime}] 필드 "${field}"를 위한 DOM 요소를 찾을 수 없습니다`);
+                    console.log('📋 현재 dataOverlay DOM:', dataOverlay.innerHTML);
                 } else {
-                    console.warn(`⚠️  [${currentTime}] 필드 "${field}"를 위한 요소를 찾을 수 없거나 데이터가 없습니다`);
+                    console.warn(`⚠️  [${currentTime}] 필드 "${field}"에 대한 데이터가 없습니다:`, data[field]);
                 }
             });
             
