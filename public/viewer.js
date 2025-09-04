@@ -148,6 +148,13 @@ class StreamViewer {
             try {
                 flvPlayer.load();
                 flvPlayer.play();
+                
+                // 스트림 로드 즉시 오버레이 업데이트 시작 (LOADED_METADATA 이벤트를 기다리지 않음)
+                console.log('🚀 FLV 스트림 로드됨 - 강제로 오버레이 업데이트 시작');
+                console.log('📦 videoContainer:', videoContainer);
+                this.startOverlayUpdate(videoContainer);
+                this.startDataOverlayUpdate(videoContainer);
+                
             } catch (error) {
                 console.error('FLV.js failed to start:', error);
                 this.stopOverlayUpdate();
@@ -169,6 +176,11 @@ class StreamViewer {
         
         webPlayer.innerHTML = '';
         webPlayer.appendChild(videoContainer);
+        
+        // Native FLV 로드 즉시 오버레이 업데이트 시작
+        console.log('🚀 Native FLV 로드됨 - 강제로 오버레이 업데이트 시작');
+        this.startOverlayUpdate(videoContainer);
+        this.startDataOverlayUpdate(videoContainer);
         
         video.addEventListener('loadstart', () => {
             console.log('Native FLV loading...');
@@ -235,6 +247,11 @@ class StreamViewer {
             
             this.hls.loadSource(hlsUrl);
             this.hls.attachMedia(video);
+            
+            // HLS 스트림 설정 즉시 오버레이 업데이트 시작 (MANIFEST_PARSED 이벤트를 기다리지 않음)
+            console.log('🚀 HLS 스트림 설정됨 - 강제로 오버레이 업데이트 시작');
+            this.startOverlayUpdate(videoContainer);
+            this.startDataOverlayUpdate(videoContainer);
             
         } else {
             this.handleStreamError(streamKey, `http://ai.gzonesoft.com:18001/live/${streamKey}.flv`, 'HLS를 지원하지 않는 브라우저입니다.');
@@ -354,9 +371,13 @@ class StreamViewer {
     
     // 오버레이 시간 업데이트 시작
     startOverlayUpdate(container) {
+        console.log('🟩 startOverlayUpdate 호출됨!', container);
+        
         this.stopOverlayUpdate(); // 기존 인터벌 정리
         
         const timeOverlay = container.querySelector('.overlay-time');
+        console.log('🔍 시간 오버레이 요소 검색 결과:', timeOverlay);
+        
         if (!timeOverlay) {
             console.error('❌ 시간 오버레이 요소를 찾을 수 없습니다');
             return;
@@ -384,11 +405,16 @@ class StreamViewer {
     
     // 데이터 오버레이 업데이트 시작
     startDataOverlayUpdate(container) {
+        console.log('🟦 startDataOverlayUpdate 호출됨!', container);
+        
         this.stopDataOverlayUpdate(); // 기존 인터벌 정리
         
         const dataOverlay = container.querySelector('.overlay-data');
+        console.log('🔍 데이터 오버레이 요소 검색 결과:', dataOverlay);
+        
         if (!dataOverlay) {
             console.error('❌ 데이터 오버레이 요소를 찾을 수 없습니다');
+            console.log('📋 container 내부 HTML:', container.innerHTML);
             return;
         }
         
