@@ -95,8 +95,8 @@ class StreamViewer {
                 }
             })
             .catch(error => {
-                console.log('FLV not available, trying HLS...', error);
-                this.tryHLSStream(streamKey, webPlayer);
+                console.log('FLV not available:', error);
+                this.handleStreamError(streamKey, flvUrl, 'FLV 스트림을 사용할 수 없습니다.');
             });
     }
     
@@ -211,54 +211,10 @@ class StreamViewer {
         }, 5000);
     }
     
-    tryHLSStream(streamKey, webPlayer) {
-        const hlsUrl = `http://ai.gzonesoft.com:18001/live/${streamKey}/index.m3u8`;
-        
-        if (Hls.isSupported()) {
-            this.hls = new Hls({
-                debug: false,
-                enableWorker: true,
-                lowLatencyMode: true,
-                backBufferLength: 90
-            });
-            
-            const videoContainer = this.createVideoContainer();
-            const video = videoContainer.querySelector('video');
-            
-            webPlayer.innerHTML = '';
-            webPlayer.appendChild(videoContainer);
-            
-            this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                console.log('HLS Stream loaded successfully');
-                video.muted = false;
-                this.startOverlayUpdate(videoContainer);
-                this.startDataOverlayUpdate(videoContainer);
-                this.showAlert('HLS 스트림이 시작되었습니다!', 'success');
-            });
-            
-            this.hls.on(Hls.Events.ERROR, (event, data) => {
-                console.error('HLS Error:', data);
-                if (data.fatal) {
-                    this.stopOverlayUpdate();
-                    this.stopDataOverlayUpdate();
-                    this.handleStreamError(streamKey, `http://ai.gzonesoft.com:18001/live/${streamKey}.flv`);
-                }
-            });
-            
-            this.hls.loadSource(hlsUrl);
-            this.hls.attachMedia(video);
-            
-            // HLS 스트림 설정 즉시 오버레이 업데이트 시작 (MANIFEST_PARSED 이벤트를 기다리지 않음)
-            console.log('🚀 HLS 스트림 설정됨 - 강제로 오버레이 업데이트 시작');
-            this.startOverlayUpdate(videoContainer);
-            this.startDataOverlayUpdate(videoContainer);
-            
-        } else {
-            this.handleStreamError(streamKey, `http://ai.gzonesoft.com:18001/live/${streamKey}.flv`, 'HLS를 지원하지 않는 브라우저입니다.');
-        }
-    }
-    
     handleStreamError(streamKey, flvUrl, message = '스트림 연결에 실패했습니다.') {
+        // HLS 시도 제거 - FLV만 사용하므로 바로 에러 처리
+        console.error('스트림 에러:', message);
+        
         // webPlayer 또는 다른 플레이어 컨테이너 찾기
         let webPlayer = document.getElementById('webPlayer');
         if (!webPlayer) {
