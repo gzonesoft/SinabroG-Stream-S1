@@ -93,7 +93,7 @@
             
             <!-- 캡처 컨트롤 패널 -->
             <div class="col-lg-4">
-                <div class="card capture-panel" style="display: none;" id="capturePanel">
+                <div class="card capture-panel" id="capturePanel">
                     <div class="card-header bg-danger text-white">
                         <h5 class="mb-0">
                             <i class="fas fa-camera me-2"></i>
@@ -103,10 +103,10 @@
                     <div class="card-body">
                         <!-- 메인 캡처 버튼 -->
                         <div class="text-center mb-4">
-                            <button id="captureBtn" class="btn btn-danger btn-lg capture-main-btn" 
-                                    onclick="captureFrame()" title="화면 캡처">
+                            <button id="captureBtn" class="btn btn-secondary btn-lg capture-main-btn" 
+                                    onclick="captureFrame()" title="스트림을 먼저 시작하세요" disabled>
                                 <i class="fas fa-camera fa-3x d-block mb-2"></i>
-                                <span class="fw-bold">촬영하기</span>
+                                <span class="fw-bold">스트림 대기중</span>
                             </button>
                         </div>
                         
@@ -157,7 +157,7 @@
                 </div>
                 
                 <!-- 스트림 정보 패널 -->
-                <div class="card mt-3" id="streamInfoPanel" style="display: none;">
+                <div class="card mt-3" id="streamInfoPanel">
                     <div class="card-header bg-info text-white">
                         <h6 class="mb-0">
                             <i class="fas fa-info-circle me-2"></i>
@@ -168,12 +168,12 @@
                         <div class="stream-info">
                             <div class="mb-2">
                                 <small class="text-muted">스트림 키:</small>
-                                <div class="fw-bold" id="streamKeyInfo">-</div>
+                                <div class="fw-bold" id="streamKeyInfo">스트림 키를 입력하세요</div>
                             </div>
                             <div class="mb-2">
                                 <small class="text-muted">상태:</small>
-                                <div class="fw-bold text-success" id="streamStatusInfo">
-                                    <i class="fas fa-circle me-1"></i>LIVE
+                                <div class="fw-bold text-muted" id="streamStatusInfo">
+                                    <i class="fas fa-circle me-1"></i>대기중
                                 </div>
                             </div>
                             <div class="mb-2">

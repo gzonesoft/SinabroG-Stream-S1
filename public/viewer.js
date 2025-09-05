@@ -612,14 +612,14 @@ class StreamViewer {
 
     // 캡처 버튼 표시/숨김
     showCaptureButton() {
-        const capturePanel = document.getElementById('capturePanel');
-        const streamInfoPanel = document.getElementById('streamInfoPanel');
+        const captureBtn = document.getElementById('captureBtn');
         
-        if (capturePanel) {
-            capturePanel.style.display = 'block';
-        }
-        if (streamInfoPanel) {
-            streamInfoPanel.style.display = 'block';
+        if (captureBtn) {
+            // 버튼 활성화 및 스타일 변경
+            captureBtn.disabled = false;
+            captureBtn.className = 'btn btn-danger btn-lg capture-main-btn';
+            captureBtn.title = '화면 캡처';
+            captureBtn.querySelector('span').textContent = '촬영하기';
         }
         
         // 스트림 정보 업데이트
@@ -630,15 +630,18 @@ class StreamViewer {
     }
 
     hideCaptureButton() {
-        const capturePanel = document.getElementById('capturePanel');
-        const streamInfoPanel = document.getElementById('streamInfoPanel');
+        const captureBtn = document.getElementById('captureBtn');
         
-        if (capturePanel) {
-            capturePanel.style.display = 'none';
+        if (captureBtn) {
+            // 버튼 비활성화 및 스타일 변경
+            captureBtn.disabled = true;
+            captureBtn.className = 'btn btn-secondary btn-lg capture-main-btn';
+            captureBtn.title = '스트림을 먼저 시작하세요';
+            captureBtn.querySelector('span').textContent = '스트림 대기중';
         }
-        if (streamInfoPanel) {
-            streamInfoPanel.style.display = 'none';
-        }
+        
+        // 스트림 상태 업데이트
+        this.updateStreamStatusToWaiting();
     }
 
     // 캡처 효과 표시 (화면 플래시)
@@ -674,15 +677,31 @@ class StreamViewer {
     // 스트림 정보 업데이트
     updateStreamInfo() {
         const streamKeyInfo = document.getElementById('streamKeyInfo');
+        const streamStatusInfo = document.getElementById('streamStatusInfo');
         const streamTimeInfo = document.getElementById('streamTimeInfo');
         
         if (streamKeyInfo && this.currentStreamKey) {
             streamKeyInfo.textContent = this.currentStreamKey;
         }
         
+        if (streamStatusInfo) {
+            streamStatusInfo.innerHTML = '<i class="fas fa-circle me-1"></i>LIVE';
+            streamStatusInfo.className = 'fw-bold text-success';
+        }
+        
         if (streamTimeInfo) {
             const now = new Date().toLocaleTimeString('ko-KR');
             streamTimeInfo.textContent = now;
+        }
+    }
+
+    // 스트림 대기 상태로 업데이트
+    updateStreamStatusToWaiting() {
+        const streamStatusInfo = document.getElementById('streamStatusInfo');
+        
+        if (streamStatusInfo) {
+            streamStatusInfo.innerHTML = '<i class="fas fa-circle me-1"></i>대기중';
+            streamStatusInfo.className = 'fw-bold text-muted';
         }
     }
 
