@@ -22,6 +22,9 @@ class StreamViewer {
         const streamKey = urlParams.get('key');
         const autoCapture = urlParams.get('autoCapture') === 'true';
         
+        // 실시간 캡처 버튼 처음부터 활성화
+        this.initializeCaptureButtons();
+        
         if (streamKey) {
             document.getElementById('streamKeyInput').value = streamKey;
             this.startViewing(streamKey);
@@ -36,6 +39,17 @@ class StreamViewer {
         
         // 초기 캡처 목록 로드
         this.updateCaptureCount();
+    }
+    
+    // 캡처 버튼들 초기화
+    initializeCaptureButtons() {
+        const realTimeCaptureBtn = document.getElementById('realTimeCaptureBtn');
+        
+        if (realTimeCaptureBtn) {
+            // 실시간 캡처 버튼은 처음부터 활성화
+            realTimeCaptureBtn.disabled = false;
+            realTimeCaptureBtn.title = '오버레이 포함 전체 화면 캡처';
+        }
     }
     
     startViewing(streamKey = null) {
@@ -629,7 +643,7 @@ class StreamViewer {
         }
         
         if (realTimeCaptureBtn) {
-            // 실시간 캡처 버튼 활성화
+            // 실시간 캡처 버튼 활성화 (이미 활성화 상태 유지)
             realTimeCaptureBtn.disabled = false;
             realTimeCaptureBtn.title = '오버레이 포함 전체 화면 캡처';
         }
@@ -653,10 +667,10 @@ class StreamViewer {
             captureBtn.querySelector('span').textContent = '스트림 대기중';
         }
         
+        // 실시간 캡처 버튼은 항상 활성화 상태 유지
         if (realTimeCaptureBtn) {
-            // 실시간 캡처 버튼 비활성화
-            realTimeCaptureBtn.disabled = true;
-            realTimeCaptureBtn.title = '스트림을 먼저 시작하세요';
+            realTimeCaptureBtn.disabled = false;
+            realTimeCaptureBtn.title = '오버레이 포함 전체 화면 캡처';
         }
         
         // 스트림 상태 업데이트
@@ -1601,5 +1615,4 @@ function setServiceName() {
         streamViewer.setServiceName(name);
         streamViewer.showAlert('서비스 이름이 변경되었습니다!', 'success');
     }
-}
 }

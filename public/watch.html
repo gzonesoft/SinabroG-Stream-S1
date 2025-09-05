@@ -103,39 +103,51 @@
                     <div class="card-body">
                         <!-- 메인 캡처 버튼 -->
                         <div class="text-center mb-4">
-                            <button id="captureBtn" class="btn btn-secondary btn-lg capture-main-btn" 
-                                    onclick="captureFrame()" title="스트림을 먼저 시작하세요" disabled>
+                            <button id="captureBtn" class="btn btn-danger btn-lg capture-main-btn" 
+                                    onclick="captureFrame()" title="화면 캡처">
                                 <i class="fas fa-camera fa-3x d-block mb-2"></i>
-                                <span class="fw-bold">스트림 대기중</span>
+                                <span class="fw-bold">촬영하기</span>
                             </button>
                         </div>
                         
-                        <!-- 캡처 컨트롤 버튼들 -->
+                        <!-- 캡처 컨트롤 버튼들 (2개씩 한 줄) -->
                         <div class="capture-controls mb-3">
-                            <button class="btn btn-danger w-100 mb-2" onclick="captureFrame()" id="realTimeCaptureBtn" disabled>
-                                <i class="fas fa-camera me-2"></i>
-                                실시간 캡처
-                            </button>
-                            <button class="btn btn-outline-warning w-100 mb-2" onclick="clearAllRecentCaptures()">
-                                <i class="fas fa-trash-alt me-2"></i>
-                                캡처 이미지 전체삭제
-                            </button>
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <button class="btn btn-danger w-100" onclick="captureFrame()" id="realTimeCaptureBtn">
+                                        <i class="fas fa-camera me-1"></i>
+                                        실시간 캡처
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button class="btn btn-outline-warning w-100" onclick="clearAllRecentCaptures()">
+                                        <i class="fas fa-trash-alt me-1"></i>
+                                        전체삭제
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         
-                        <!-- 갤러리 버튼 -->
-                        <button class="btn btn-outline-primary w-100 mb-3" onclick="openCaptureGallery()">
-                            <i class="fas fa-images me-2"></i>
-                            캡처 갤러리 열기
-                            <span class="badge bg-success ms-2" id="galleryBadge" style="display: none;">0</span>
-                        </button>
+                        <!-- 갤러리 및 자동 캡처 버튼들 (2개씩 한 줄) -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100" onclick="openCaptureGallery()">
+                                    <i class="fas fa-images me-1"></i>
+                                    갤러리
+                                    <span class="badge bg-success ms-1" id="galleryBadge" style="display: none;">0</span>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-success w-100" onclick="toggleAutoCapture()" id="autoCaptureBtn">
+                                    <i class="fas fa-clock me-1"></i>
+                                    자동캡처
+                                </button>
+                            </div>
+                        </div>
                         
-                        <!-- 자동 캡처 설정 -->
-                        <div class="auto-capture-control">
-                            <button class="btn btn-outline-success w-100 mb-2" onclick="toggleAutoCapture()" id="autoCaptureBtn">
-                                <i class="fas fa-clock me-2"></i>
-                                자동 캡처 시작
-                            </button>
-                            <small class="text-muted d-block text-center">
+                        <!-- 자동 캡처 설명 -->
+                        <div class="text-center mb-3">
+                            <small class="text-muted">
                                 일정 간격으로 자동 촬영
                             </small>
                         </div>
