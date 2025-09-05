@@ -247,34 +247,51 @@ body {
     width: 100%;
 }
 
+.video-player-main {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
 .video-overlay {
     position: absolute;
     pointer-events: none;
-    z-index: 10;
+    z-index: 15;
     color: white;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
+    font-weight: 600;
+    visibility: visible;
+    opacity: 1;
+    display: block;
 }
 
 .overlay-service-name {
     top: 20px;
     left: 20px;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     font-weight: bold;
     color: white;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.9);
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 8px 16px;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(10px);
 }
 
 .overlay-time {
     bottom: 20px;
     right: 20px;
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     font-weight: 600;
-    background-color: rgba(0, 0, 0, 0.6);
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
     backdrop-filter: blur(10px);
+    text-align: center;
+    min-width: 180px;
 }
 
 .overlay-date {
@@ -286,20 +303,39 @@ body {
 /* 모바일 반응형 오버레이 */
 @media (max-width: 768px) {
     .overlay-service-name {
-        font-size: 1.2rem;
+        font-size: 1.4rem;
         top: 15px;
         left: 15px;
+        padding: 6px 12px;
     }
     
     .overlay-time {
-        font-size: 1rem;
+        font-size: 1.1rem;
         bottom: 15px;
         right: 15px;
-        padding: 6px 10px;
+        padding: 8px 12px;
+        min-width: 150px;
     }
     
     .overlay-date {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
+    }
+    
+    .overlay-data {
+        font-size: 0.95rem;
+        padding: 8px 12px;
+        bottom: 15px;
+        left: 15px;
+        max-width: 260px;
+    }
+    
+    .overlay-data .data-label {
+        width: 55px;
+        font-size: 0.85rem;
+    }
+    
+    .overlay-data .data-value {
+        font-size: 0.9rem;
     }
 }
 
@@ -319,43 +355,46 @@ body {
     }
 }
 
-/* 데이터 오버레이 스타일 - 시간 오버레이와 동일한 스타일 적용 */
+/* 데이터 오버레이 스타일 - 좌하단 위경도 및 센서 정보 */
 .overlay-data {
     bottom: 20px;
     left: 20px;
-    font-size: 1.0rem;
+    font-size: 1.1rem;
     font-weight: 600;
-    background-color: rgba(0, 0, 0, 0.6);
+    background-color: rgba(0, 0, 0, 0.7);
     color: white;
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
     backdrop-filter: blur(10px);
-    max-width: 280px;
+    max-width: 320px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    line-height: 1.3;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    line-height: 1.4;
+    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
 }
 
 .overlay-data .data-label {
-    color: rgba(255, 255, 255, 0.9);
-    font-weight: 500;
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 600;
     display: inline-block;
-    width: 60px;
+    width: 70px;
     text-align: right;
-    margin-right: 8px;
-    font-size: 0.9rem;
+    margin-right: 10px;
+    font-size: 1.0rem;
 }
 
 .overlay-data .data-value {
-    color: white;
-    font-weight: 600;
-    font-size: 0.95rem;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
 }
 
 .overlay-data .data-row {
-    margin-bottom: 1px;
+    margin-bottom: 3px;
     white-space: nowrap;
+    display: flex;
+    align-items: center;
 }
 
 .overlay-data .data-row:last-child {
