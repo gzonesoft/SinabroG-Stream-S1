@@ -123,3 +123,8 @@ Thumbs.db
 *.m3u8
 streams/
 media/
+
+# Real-time data files
+data_overly_refresh.json
+overlay-data.log
+server.log
