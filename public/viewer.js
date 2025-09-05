@@ -618,13 +618,20 @@ class StreamViewer {
     // 캡처 버튼 표시/숨김
     showCaptureButton() {
         const captureBtn = document.getElementById('captureBtn');
+        const realTimeCaptureBtn = document.getElementById('realTimeCaptureBtn');
         
         if (captureBtn) {
-            // 버튼 활성화 및 스타일 변경
+            // 메인 버튼 활성화 및 스타일 변경
             captureBtn.disabled = false;
             captureBtn.className = 'btn btn-danger btn-lg capture-main-btn';
             captureBtn.title = '화면 캡처';
             captureBtn.querySelector('span').textContent = '촬영하기';
+        }
+        
+        if (realTimeCaptureBtn) {
+            // 실시간 캡처 버튼 활성화
+            realTimeCaptureBtn.disabled = false;
+            realTimeCaptureBtn.title = '오버레이 포함 전체 화면 캡처';
         }
         
         // 스트림 정보 업데이트
@@ -636,13 +643,20 @@ class StreamViewer {
 
     hideCaptureButton() {
         const captureBtn = document.getElementById('captureBtn');
+        const realTimeCaptureBtn = document.getElementById('realTimeCaptureBtn');
         
         if (captureBtn) {
-            // 버튼 비활성화 및 스타일 변경
+            // 메인 버튼 비활성화 및 스타일 변경
             captureBtn.disabled = true;
             captureBtn.className = 'btn btn-secondary btn-lg capture-main-btn';
             captureBtn.title = '스트림을 먼저 시작하세요';
             captureBtn.querySelector('span').textContent = '스트림 대기중';
+        }
+        
+        if (realTimeCaptureBtn) {
+            // 실시간 캡처 버튼 비활성화
+            realTimeCaptureBtn.disabled = true;
+            realTimeCaptureBtn.title = '스트림을 먼저 시작하세요';
         }
         
         // 스트림 상태 업데이트
@@ -839,34 +853,193 @@ class StreamViewer {
         }
         
         // 새 창에서 이미지 크게 보기
-        const newWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+        const newWindow = window.open('', '_blank', 'width=1000,height=700,scrollbars=yes,resizable=yes');
         newWindow.document.write(`
             <html>
             <head>
-                <title>캡처 상세 - ${new Date(capture.timestamp).toLocaleString()}</title>
+                <title>스트림 캡처 - ${new Date(capture.timestamp).toLocaleString()}</title>
                 <style>
-                    body { margin: 0; padding: 20px; background: #000; color: #fff; font-family: Arial, sans-serif; }
-                    img { max-width: 100%; height: auto; display: block; margin: 0 auto; border: 2px solid #fff; }
-                    .info { text-align: center; margin: 20px 0; }
-                    .download-btn { 
-                        background: #007bff; color: white; padding: 10px 20px; 
-                        border: none; border-radius: 5px; cursor: pointer; margin: 10px;
+                    body { 
+                        margin: 0; padding: 20px; background: #000; color: #fff; 
+                        font-family: 'Segoe UI', Arial, sans-serif; 
                     }
-                    .download-btn:hover { background: #0056b3; }
+                    .header { text-align: center; margin-bottom: 20px; }
+                    .header h2 { margin: 0; color: #007bff; }
+                    .image-container { 
+                        text-align: center; 
+                        margin: 20px 0; 
+                        border: 2px solid #333; 
+                        border-radius: 8px; 
+                        overflow: hidden;
+                        background: #111;
+                    }
+                    img { 
+                        max-width: 100%; height: auto; display: block; 
+                        margin: 0 auto; 
+                    }
+                    .info-grid { 
+                        display: grid; 
+                        grid-template-columns: 1fr 1fr; 
+                        gap: 20px; 
+                        margin: 20px 0; 
+                    }
+                    .info-section {
+                        background: #222;
+                        padding: 15px;
+                        border-radius: 8px;
+                        border: 1px solid #333;
+                    }
+                    .info-section h3 { 
+                        margin: 0 0 10px 0; 
+                        color: #28a745; 
+                        font-size: 1.1em;
+                    }
+                    .info-item { 
+                        margin: 8px 0; 
+                        display: flex; 
+                        justify-content: space-between;
+                    }
+                    .info-label { color: #aaa; font-weight: 500; }
+                    .info-value { color: #fff; font-weight: 600; }
+                    .button-container { 
+                        text-align: center; 
+                        margin: 20px 0;
+                        display: flex;
+                        gap: 10px;
+                        justify-content: center;
+                    }
+                    .download-btn { 
+                        background: #007bff; color: white; padding: 12px 24px; 
+                        border: none; border-radius: 6px; cursor: pointer; 
+                        font-size: 16px; font-weight: 600;
+                        transition: all 0.3s ease;
+                    }
+                    .download-btn:hover { background: #0056b3; transform: translateY(-2px); }
+                    .close-btn { 
+                        background: #6c757d; color: white; padding: 12px 24px; 
+                        border: none; border-radius: 6px; cursor: pointer; 
+                        font-size: 16px; font-weight: 600;
+                        transition: all 0.3s ease;
+                    }
+                    .close-btn:hover { background: #545b62; transform: translateY(-2px); }
+                    .overlay-info {
+                        background: #1a1a2e;
+                        border: 1px solid #16213e;
+                        color: #eee;
+                    }
+                    .sensor-data {
+                        background: #0f3460;
+                        border: 1px solid #16213e;
+                        color: #e3f2fd;
+                    }
+                    @media (max-width: 768px) {
+                        .info-grid { grid-template-columns: 1fr; }
+                        .button-container { flex-direction: column; align-items: center; }
+                    }
                 </style>
             </head>
             <body>
-                <div class="info">
-                    <h2>스트림 캡처</h2>
-                    <p>스트림: ${capture.streamKey}</p>
-                    <p>시간: ${new Date(capture.timestamp).toLocaleString()}</p>
-                    <p>해상도: ${capture.width || '알 수 없음'} × ${capture.height || '알 수 없음'}</p>
+                <div class="header">
+                    <h2>📸 실시간 스트림 캡처</h2>
+                    <p>오버레이 포함 전체 화면 캡처</p>
                 </div>
-                <img src="${capture.dataUrl}" alt="캡처 이미지">
-                <div class="info">
-                    <button class="download-btn" onclick="downloadImage()">다운로드</button>
-                    <button class="download-btn" onclick="window.close()">닫기</button>
+                
+                <div class="image-container">
+                    <img src="${capture.dataUrl}" alt="스트림 캡처 이미지">
                 </div>
+                
+                <div class="info-grid">
+                    <div class="info-section">
+                        <h3>📋 기본 정보</h3>
+                        <div class="info-item">
+                            <span class="info-label">스트림 키:</span>
+                            <span class="info-value">${capture.streamKey}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">캡처 시간:</span>
+                            <span class="info-value">${new Date(capture.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">해상도:</span>
+                            <span class="info-value">${capture.width || '알 수 없음'} × ${capture.height || '알 수 없음'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">캡처 타입:</span>
+                            <span class="info-value">${capture.captureType === 'full_overlay' ? '오버레이 포함' : '일반'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">캡처 ID:</span>
+                            <span class="info-value">${capture.id.substring(0, 16)}...</span>
+                        </div>
+                    </div>
+                    
+                    ${capture.overlayData ? `
+                    <div class="info-section overlay-info">
+                        <h3>🎯 오버레이 정보</h3>
+                        <div class="info-item">
+                            <span class="info-label">서비스명:</span>
+                            <span class="info-value">${capture.overlayData.serviceName || '없음'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">시간:</span>
+                            <span class="info-value">${capture.overlayData.time || '없음'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">날짜:</span>
+                            <span class="info-value">${capture.overlayData.date || '없음'}</span>
+                        </div>
+                    </div>
+                    
+                    ${capture.overlayData.sensorData ? `
+                    <div class="info-section sensor-data">
+                        <h3>📡 센서 데이터</h3>
+                        <div class="info-item">
+                            <span class="info-label">위도:</span>
+                            <span class="info-value">${capture.overlayData.sensorData.LATITUDE || '없음'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">경도:</span>
+                            <span class="info-value">${capture.overlayData.sensorData.LONGITUDE || '없음'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">고도:</span>
+                            <span class="info-value">${capture.overlayData.sensorData.ALTITUDE || '없음'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">속도:</span>
+                            <span class="info-value">${capture.overlayData.sensorData.SPEED || '없음'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">방위각:</span>
+                            <span class="info-value">${capture.overlayData.sensorData.AZIMUTH || '없음'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">틸트:</span>
+                            <span class="info-value">${capture.overlayData.sensorData.TILT || '없음'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">롤:</span>
+                            <span class="info-value">${capture.overlayData.sensorData.ROLL || '없음'}</span>
+                        </div>
+                    </div>
+                    ` : ''}
+                    ` : `
+                    <div class="info-section">
+                        <h3>ℹ️ 추가 정보</h3>
+                        <p style="color: #aaa; font-style: italic;">오버레이 정보가 없는 캡처입니다.</p>
+                    </div>
+                    `}
+                </div>
+                
+                <div class="button-container">
+                    <button class="download-btn" onclick="downloadImage()">
+                        📥 다운로드
+                    </button>
+                    <button class="close-btn" onclick="window.close()">
+                        ❌ 닫기
+                    </button>
+                </div>
+                
                 <script>
                     function downloadImage() {
                         const link = document.createElement('a');
@@ -910,6 +1083,29 @@ class StreamViewer {
         this.showAlert('캡처가 다운로드되었습니다.', 'success');
     }
 
+    // 모든 캡처 이미지 전체 삭제
+    clearAllRecentCaptures() {
+        const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+        
+        if (captures.length === 0) {
+            this.showAlert('삭제할 캡처 이미지가 없습니다.', 'info');
+            return;
+        }
+        
+        if (confirm(`모든 캡처 이미지 ${captures.length}개를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+            try {
+                localStorage.removeItem('streamCaptures');
+                this.updateCaptureCount();
+                this.showAlert(`모든 캡처 이미지 ${captures.length}개가 삭제되었습니다.`, 'success');
+                console.log('🗑️ 모든 캡처 이미지 삭제 완료:', captures.length, '개');
+            } catch (error) {
+                console.error('캡처 이미지 전체 삭제 실패:', error);
+                this.showAlert('캡처 이미지 삭제에 실패했습니다.', 'error');
+            }
+        }
+    }
+    }
+
     // 자동 캡처 함수
     async autoCaptureAfterLoad() {
         try {
@@ -946,18 +1142,29 @@ class StreamViewer {
         }
     }
 
-    // 화면 캡처 기능
+    // 화면 캡처 기능 (오버레이 포함)
     async captureVideoFrame() {
         try {
-            // 비디오 컨테이너 찾기
+            // 비디오 컨테이너 찾기 (오버레이 포함된 전체 컨테이너)
             const videoContainer = document.querySelector('.video-container');
             if (!videoContainer) {
                 throw new Error('비디오 컨테이너를 찾을 수 없습니다.');
             }
 
-            console.log('📸 화면 캡처 시작...');
+            console.log('📸 전체 화면 캡처 시작 (오버레이 포함)...');
             
-            // html2canvas를 사용하여 오버레이와 함께 캡처
+            // 캡처 전 준비: 모든 오버레이가 표시되도록 확인
+            const overlays = videoContainer.querySelectorAll('.video-overlay');
+            overlays.forEach(overlay => {
+                overlay.style.pointerEvents = 'none';
+                overlay.style.opacity = '1';
+                overlay.style.visibility = 'visible';
+            });
+            
+            // 잠시 대기하여 오버레이가 완전히 렌더링되도록 함
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // html2canvas를 사용하여 오버레이와 함께 전체 컨테이너 캡처
             const canvas = await html2canvas(videoContainer, {
                 allowTaint: true,
                 useCORS: true,
@@ -965,11 +1172,32 @@ class StreamViewer {
                 width: videoContainer.offsetWidth,
                 height: videoContainer.offsetHeight,
                 scale: 1,
-                logging: false
+                logging: false,
+                onclone: (clonedDoc) => {
+                    // 클론된 문서에서도 오버레이가 제대로 표시되도록 설정
+                    const clonedOverlays = clonedDoc.querySelectorAll('.video-overlay');
+                    clonedOverlays.forEach(overlay => {
+                        overlay.style.pointerEvents = 'none';
+                        overlay.style.opacity = '1';
+                        overlay.style.visibility = 'visible';
+                        overlay.style.display = 'block';
+                    });
+                    
+                    // 비디오 요소가 제대로 캡처되도록 설정
+                    const clonedVideo = clonedDoc.querySelector('video');
+                    if (clonedVideo) {
+                        clonedVideo.style.objectFit = 'contain';
+                        clonedVideo.style.width = '100%';
+                        clonedVideo.style.height = '100%';
+                    }
+                }
             });
 
-            // 캔버스를 이미지 데이터로 변환
-            const dataUrl = canvas.toDataURL('image/png', 0.9);
+            // 캔버스를 이미지 데이터로 변환 (고화질 PNG)
+            const dataUrl = canvas.toDataURL('image/png', 1.0);
+            
+            // 현재 오버레이 정보 수집
+            const overlayData = this.collectOverlayData();
             
             // 캡처 데이터 생성
             const captureData = {
@@ -978,29 +1206,72 @@ class StreamViewer {
                 timestamp: new Date().toISOString(),
                 streamKey: this.currentStreamKey || 'unknown',
                 width: canvas.width,
-                height: canvas.height
+                height: canvas.height,
+                overlayData: overlayData,
+                captureType: 'full_overlay' // 오버레이 포함 캡처임을 표시
             };
 
             // localStorage에 저장
             this.saveCaptureToStorage(captureData);
 
             // 사용자에게 알림
-            this.showAlert('화면이 성공적으로 캡처되었습니다!', 'success');
+            this.showAlert('오버레이 포함 전체 화면이 성공적으로 캡처되었습니다!', 'success');
 
             // 캡처 효과 (화면 플래시)
             this.showCaptureEffect();
 
-            // 캡처 갤러리 버튼에 뱃지 표시
-            this.updateCaptureCount();
-
-            console.log('✅ 캡처 완료:', captureData.id);
+            console.log('✅ 전체 화면 캡처 완료 (오버레이 포함):', captureData.id);
+            console.log('📊 캡처 해상도:', `${canvas.width}x${canvas.height}`);
+            console.log('🎯 포함된 오버레이:', overlayData);
+            
             return captureData;
 
         } catch (error) {
-            console.error('캡처 실패:', error);
+            console.error('전체 화면 캡처 실패:', error);
             this.showAlert('화면 캡처에 실패했습니다: ' + error.message, 'error');
             throw error;
         }
+    }
+
+    // 오버레이 데이터 수집
+    collectOverlayData() {
+        const overlayData = {};
+        
+        try {
+            // 서비스명 오버레이
+            const serviceOverlay = document.querySelector('.overlay-service-name');
+            if (serviceOverlay) {
+                overlayData.serviceName = serviceOverlay.textContent;
+            }
+            
+            // 시간 오버레이
+            const timeOverlay = document.querySelector('.overlay-time');
+            if (timeOverlay) {
+                const timeElement = timeOverlay.querySelector('.overlay-current-time');
+                const dateElement = timeOverlay.querySelector('.overlay-date');
+                overlayData.time = timeElement ? timeElement.textContent : '';
+                overlayData.date = dateElement ? dateElement.textContent : '';
+            }
+            
+            // 데이터 오버레이
+            const dataOverlay = document.querySelector('.overlay-data');
+            if (dataOverlay) {
+                const dataFields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED', 'AZIMUTH', 'TILT', 'ROLL'];
+                overlayData.sensorData = {};
+                
+                dataFields.forEach(field => {
+                    const element = dataOverlay.querySelector(`[data-field="${field}"]`);
+                    if (element) {
+                        overlayData.sensorData[field] = element.textContent;
+                    }
+                });
+            }
+            
+        } catch (error) {
+            console.warn('오버레이 데이터 수집 중 오류:', error);
+        }
+        
+        return overlayData;
     }
 
     // 캡처 ID 생성
@@ -1299,3 +1570,13 @@ StreamViewer.prototype.stopAutoCapture = function() {
     this.updateAutoCaptureStatus();
     console.log('🛑 자동 캡처 중지');
 };
+
+// 모든 캡처 이미지 전체 삭제 (전역 함수)
+function clearAllRecentCaptures() {
+    if (!streamViewer) {
+        alert('스트림 뷰어가 초기화되지 않았습니다.');
+        return;
+    }
+    
+    streamViewer.clearAllRecentCaptures();
+}

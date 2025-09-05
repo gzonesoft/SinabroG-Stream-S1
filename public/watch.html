@@ -110,6 +110,18 @@
                             </button>
                         </div>
                         
+                        <!-- 캡처 컨트롤 버튼들 -->
+                        <div class="capture-controls mb-3">
+                            <button class="btn btn-danger w-100 mb-2" onclick="captureFrame()" id="realTimeCaptureBtn" disabled>
+                                <i class="fas fa-camera me-2"></i>
+                                실시간 캡처
+                            </button>
+                            <button class="btn btn-outline-warning w-100 mb-2" onclick="clearAllRecentCaptures()">
+                                <i class="fas fa-trash-alt me-2"></i>
+                                캡처 이미지 전체삭제
+                            </button>
+                        </div>
+                        
                         <!-- 갤러리 버튼 -->
                         <button class="btn btn-outline-primary w-100 mb-3" onclick="openCaptureGallery()">
                             <i class="fas fa-images me-2"></i>
