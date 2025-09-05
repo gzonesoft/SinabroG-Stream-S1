@@ -1104,7 +1104,6 @@ class StreamViewer {
             }
         }
     }
-    }
 
     // 자동 캡처 함수
     async autoCaptureAfterLoad() {
@@ -1579,4 +1578,28 @@ function clearAllRecentCaptures() {
     }
     
     streamViewer.clearAllRecentCaptures();
+}
+
+// 시청 시작 (전역 함수)
+function startViewing() {
+    if (!streamViewer) {
+        console.error('스트림 뷰어가 초기화되지 않았습니다.');
+        return;
+    }
+    streamViewer.startViewing();
+}
+
+// 서비스 이름 설정 (전역 함수)
+function setServiceName() {
+    if (!streamViewer) {
+        alert('스트림 뷰어가 초기화되지 않았습니다.');
+        return;
+    }
+    
+    const name = prompt('서비스 이름을 입력하세요:', streamViewer.serviceName);
+    if (name !== null) {
+        streamViewer.setServiceName(name);
+        streamViewer.showAlert('서비스 이름이 변경되었습니다!', 'success');
+    }
+}
 }
