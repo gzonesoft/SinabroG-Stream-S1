@@ -48,7 +48,7 @@ class StreamViewer {
         if (realTimeCaptureBtn) {
             // 실시간 캡처 버튼은 처음부터 활성화
             realTimeCaptureBtn.disabled = false;
-            realTimeCaptureBtn.title = '오버레이 포함 전체 화면 캡처';
+            realTimeCaptureBtn.title = '사용자 화면 그대로 캡처 (모든 오버레이 포함)';
         }
     }
     
@@ -638,14 +638,17 @@ class StreamViewer {
             // 메인 버튼 활성화 및 스타일 변경
             captureBtn.disabled = false;
             captureBtn.className = 'btn btn-danger btn-lg capture-main-btn';
-            captureBtn.title = '화면 캡처';
-            captureBtn.querySelector('span').textContent = '촬영하기';
+            captureBtn.title = '사용자 화면 그대로 캡처 (오버레이 포함)';
+            const spanElement = captureBtn.querySelector('span');
+            if (spanElement) {
+                spanElement.textContent = '화면 캡처';
+            }
         }
         
         if (realTimeCaptureBtn) {
             // 실시간 캡처 버튼 활성화 (이미 활성화 상태 유지)
             realTimeCaptureBtn.disabled = false;
-            realTimeCaptureBtn.title = '오버레이 포함 전체 화면 캡처';
+            realTimeCaptureBtn.title = '사용자 화면 그대로 캡처 (오버레이 포함)';
         }
         
         // 스트림 정보 업데이트
@@ -664,13 +667,16 @@ class StreamViewer {
             captureBtn.disabled = true;
             captureBtn.className = 'btn btn-secondary btn-lg capture-main-btn';
             captureBtn.title = '스트림을 먼저 시작하세요';
-            captureBtn.querySelector('span').textContent = '스트림 대기중';
+            const spanElement = captureBtn.querySelector('span');
+            if (spanElement) {
+                spanElement.textContent = '스트림 대기중';
+            }
         }
         
         // 실시간 캡처 버튼은 항상 활성화 상태 유지
         if (realTimeCaptureBtn) {
             realTimeCaptureBtn.disabled = false;
-            realTimeCaptureBtn.title = '오버레이 포함 전체 화면 캡처';
+            realTimeCaptureBtn.title = '사용자 화면 그대로 캡처 (오버레이 포함)';
         }
         
         // 스트림 상태 업데이트
@@ -987,53 +993,53 @@ class StreamViewer {
                         </div>
                     </div>
                     
-                    ${capture.overlayData ? `
+                    ${capture.overlayData && capture.overlayData.userScreenData ? `
                     <div class="info-section overlay-info">
-                        <h3>🎯 오버레이 정보</h3>
+                        <h3>🎯 화면 오버레이 정보</h3>
                         <div class="info-item">
-                            <span class="info-label">서비스명:</span>
-                            <span class="info-value">${capture.overlayData.serviceName || '없음'}</span>
+                            <span class="info-label">좌상단 서비스명:</span>
+                            <span class="info-value">${capture.overlayData.userScreenData.serviceName || '없음'}</span>
                         </div>
                         <div class="info-item">
-                            <span class="info-label">시간:</span>
-                            <span class="info-value">${capture.overlayData.time || '없음'}</span>
+                            <span class="info-label">우하단 시간:</span>
+                            <span class="info-value">${capture.overlayData.userScreenData.currentTime || '없음'}</span>
                         </div>
                         <div class="info-item">
-                            <span class="info-label">날짜:</span>
-                            <span class="info-value">${capture.overlayData.date || '없음'}</span>
+                            <span class="info-label">우하단 날짜:</span>
+                            <span class="info-value">${capture.overlayData.userScreenData.currentDate || '없음'}</span>
                         </div>
                     </div>
                     
-                    ${capture.overlayData.sensorData ? `
+                    ${capture.overlayData.userScreenData.sensorData ? `
                     <div class="info-section sensor-data">
-                        <h3>📡 센서 데이터</h3>
+                        <h3>📡 좌하단 센서 데이터</h3>
                         <div class="info-item">
                             <span class="info-label">위도:</span>
-                            <span class="info-value">${capture.overlayData.sensorData.LATITUDE || '없음'}</span>
+                            <span class="info-value">${capture.overlayData.userScreenData.sensorData.LATITUDE || '없음'}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">경도:</span>
-                            <span class="info-value">${capture.overlayData.sensorData.LONGITUDE || '없음'}</span>
+                            <span class="info-value">${capture.overlayData.userScreenData.sensorData.LONGITUDE || '없음'}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">고도:</span>
-                            <span class="info-value">${capture.overlayData.sensorData.ALTITUDE || '없음'}</span>
+                            <span class="info-value">${capture.overlayData.userScreenData.sensorData.ALTITUDE || '없음'}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">속도:</span>
-                            <span class="info-value">${capture.overlayData.sensorData.SPEED || '없음'}</span>
+                            <span class="info-value">${capture.overlayData.userScreenData.sensorData.SPEED || '없음'}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">방위각:</span>
-                            <span class="info-value">${capture.overlayData.sensorData.AZIMUTH || '없음'}</span>
+                            <span class="info-value">${capture.overlayData.userScreenData.sensorData.AZIMUTH || '없음'}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">틸트:</span>
-                            <span class="info-value">${capture.overlayData.sensorData.TILT || '없음'}</span>
+                            <span class="info-value">${capture.overlayData.userScreenData.sensorData.TILT || '없음'}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">롤:</span>
-                            <span class="info-value">${capture.overlayData.sensorData.ROLL || '없음'}</span>
+                            <span class="info-value">${capture.overlayData.userScreenData.sensorData.ROLL || '없음'}</span>
                         </div>
                     </div>
                     ` : ''}
@@ -1155,7 +1161,7 @@ class StreamViewer {
         }
     }
 
-    // 화면 캡처 기능 (오버레이 포함)
+    // 화면 캡처 기능 (오버레이 포함 - 사용자가 보는 화면 그대로)
     async captureVideoFrame() {
         try {
             // 비디오 컨테이너 찾기 (오버레이 포함된 전체 컨테이너)
@@ -1164,55 +1170,120 @@ class StreamViewer {
                 throw new Error('비디오 컨테이너를 찾을 수 없습니다.');
             }
 
-            console.log('📸 전체 화면 캡처 시작 (오버레이 포함)...');
+            console.log('📸 사용자 화면 그대로 캡처 시작 (모든 오버레이 포함)...');
             
-            // 캡처 전 준비: 모든 오버레이가 표시되도록 확인
+            // 캡처 전 준비: 모든 오버레이가 완벽히 표시되도록 확인
             const overlays = videoContainer.querySelectorAll('.video-overlay');
             overlays.forEach(overlay => {
                 overlay.style.pointerEvents = 'none';
                 overlay.style.opacity = '1';
                 overlay.style.visibility = 'visible';
+                overlay.style.display = 'block';
+                overlay.style.zIndex = '15'; // 오버레이가 위에 표시되도록
             });
             
-            // 잠시 대기하여 오버레이가 완전히 렌더링되도록 함
-            await new Promise(resolve => setTimeout(resolve, 200));
+            // 서비스명 오버레이 강제 업데이트
+            const serviceOverlay = videoContainer.querySelector('.overlay-service-name');
+            if (serviceOverlay) {
+                serviceOverlay.textContent = this.serviceName;
+                serviceOverlay.style.opacity = '1';
+                serviceOverlay.style.visibility = 'visible';
+            }
             
-            // html2canvas를 사용하여 오버레이와 함께 전체 컨테이너 캡처
+            // 시간 오버레이 강제 업데이트  
+            const timeOverlay = videoContainer.querySelector('.overlay-time');
+            if (timeOverlay) {
+                this.updateTimeOverlay(timeOverlay);
+                timeOverlay.style.opacity = '1';
+                timeOverlay.style.visibility = 'visible';
+            }
+            
+            // 데이터 오버레이 강제 업데이트
+            const dataOverlay = videoContainer.querySelector('.overlay-data');
+            if (dataOverlay) {
+                // 최신 데이터로 즉시 업데이트 시도
+                await this.updateDataOverlay(dataOverlay);
+                dataOverlay.style.opacity = '1';
+                dataOverlay.style.visibility = 'visible';
+            }
+            
+            // 오버레이 렌더링 완료 대기
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // 고품질 캡처를 위한 html2canvas 설정
             const canvas = await html2canvas(videoContainer, {
                 allowTaint: true,
                 useCORS: true,
                 backgroundColor: '#000000',
                 width: videoContainer.offsetWidth,
                 height: videoContainer.offsetHeight,
-                scale: 1,
-                logging: false,
+                scale: 2, // 고화질을 위해 스케일 2배로 증가
+                logging: true, // 디버깅을 위해 로깅 활성화
+                removeContainer: false,
+                foreignObjectRendering: true, // 더 나은 텍스트 렌더링
+                imageTimeout: 15000, // 이미지 로딩 타임아웃 증가
                 onclone: (clonedDoc) => {
-                    // 클론된 문서에서도 오버레이가 제대로 표시되도록 설정
+                    console.log('🔄 html2canvas 클론 문서 처리 시작...');
+                    
+                    // 클론된 문서에서 모든 오버레이가 완벽히 표시되도록 설정
                     const clonedOverlays = clonedDoc.querySelectorAll('.video-overlay');
-                    clonedOverlays.forEach(overlay => {
+                    clonedOverlays.forEach((overlay, index) => {
                         overlay.style.pointerEvents = 'none';
                         overlay.style.opacity = '1';
                         overlay.style.visibility = 'visible';
                         overlay.style.display = 'block';
+                        overlay.style.position = 'absolute';
+                        overlay.style.zIndex = (15 + index).toString();
+                        overlay.style.color = 'white';
+                        overlay.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 0.8)';
+                        
+                        console.log(`📋 클론된 오버레이 ${index + 1} 설정 완료:`, overlay.className);
                     });
                     
-                    // 비디오 요소가 제대로 캡처되도록 설정
+                    // 비디오 요소 최적화
                     const clonedVideo = clonedDoc.querySelector('video');
                     if (clonedVideo) {
                         clonedVideo.style.objectFit = 'contain';
                         clonedVideo.style.width = '100%';
                         clonedVideo.style.height = '100%';
+                        clonedVideo.style.background = '#000000';
+                        console.log('🎥 클론된 비디오 요소 설정 완료');
                     }
+                    
+                    // 서비스명 오버레이 재확인
+                    const clonedServiceOverlay = clonedDoc.querySelector('.overlay-service-name');
+                    if (clonedServiceOverlay) {
+                        clonedServiceOverlay.textContent = this.serviceName;
+                        console.log('🏷️ 클론된 서비스명 오버레이:', this.serviceName);
+                    }
+                    
+                    // 시간 오버레이 재확인
+                    const clonedTimeOverlay = clonedDoc.querySelector('.overlay-time');
+                    if (clonedTimeOverlay) {
+                        const now = new Date();
+                        const timeString = now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                        const dateString = now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+                        
+                        const timeElement = clonedTimeOverlay.querySelector('.overlay-current-time');
+                        const dateElement = clonedTimeOverlay.querySelector('.overlay-date');
+                        
+                        if (timeElement) timeElement.textContent = timeString;
+                        if (dateElement) dateElement.textContent = dateString;
+                        
+                        console.log('⏰ 클론된 시간 오버레이:', timeString, dateString);
+                    }
+                    
+                    console.log('✅ html2canvas 클론 문서 처리 완료');
                 }
             });
 
-            // 캔버스를 이미지 데이터로 변환 (고화질 PNG)
+            // 캔버스를 최고 품질 이미지 데이터로 변환
             const dataUrl = canvas.toDataURL('image/png', 1.0);
             
-            // 현재 오버레이 정보 수집
+            // 현재 화면의 모든 오버레이 정보 수집
             const overlayData = this.collectOverlayData();
             
-            // 캡처 데이터 생성
+            // 캡처 데이터 생성 (사용자가 보는 화면 정보 포함)
             const captureData = {
                 id: this.generateCaptureId(),
                 dataUrl: dataUrl,
@@ -1221,67 +1292,158 @@ class StreamViewer {
                 width: canvas.width,
                 height: canvas.height,
                 overlayData: overlayData,
-                captureType: 'full_overlay' // 오버레이 포함 캡처임을 표시
+                captureType: 'user_screen_exact', // 사용자 화면 정확 복사임을 표시
+                captureNote: '좌상단 로고, 좌하단 센서데이터, 우하단 시간정보 포함'
             };
 
             // localStorage에 저장
             this.saveCaptureToStorage(captureData);
 
-            // 사용자에게 알림
-            this.showAlert('오버레이 포함 전체 화면이 성공적으로 캡처되었습니다!', 'success');
+            // 성공 알림 (구체적 정보 포함)
+            this.showAlert('사용자 화면 그대로 캡처 완료! (로고+센서데이터+시간정보 포함)', 'success');
 
             // 캡처 효과 (화면 플래시)
             this.showCaptureEffect();
 
-            console.log('✅ 전체 화면 캡처 완료 (오버레이 포함):', captureData.id);
+            console.log('✅ 사용자 화면 정확 캡처 완료:', captureData.id);
             console.log('📊 캡처 해상도:', `${canvas.width}x${canvas.height}`);
-            console.log('🎯 포함된 오버레이:', overlayData);
+            console.log('🎯 포함된 오버레이 정보:', overlayData);
+            console.log('📝 캡처 설명:', captureData.captureNote);
             
             return captureData;
 
         } catch (error) {
-            console.error('전체 화면 캡처 실패:', error);
+            console.error('사용자 화면 캡처 실패:', error);
             this.showAlert('화면 캡처에 실패했습니다: ' + error.message, 'error');
             throw error;
         }
     }
 
-    // 오버레이 데이터 수집
+    // 오버레이 데이터 수집 (사용자가 보는 모든 화면 정보)
     collectOverlayData() {
-        const overlayData = {};
+        const overlayData = {
+            captureTime: new Date().toISOString(),
+            userScreenData: {
+                serviceName: null,
+                currentTime: null,
+                currentDate: null,
+                sensorData: {}
+            }
+        };
         
         try {
-            // 서비스명 오버레이
+            console.log('📊 사용자 화면 오버레이 데이터 수집 시작...');
+            
+            // 1. 서비스명 오버레이 (좌상단)
             const serviceOverlay = document.querySelector('.overlay-service-name');
-            if (serviceOverlay) {
-                overlayData.serviceName = serviceOverlay.textContent;
+            if (serviceOverlay && serviceOverlay.textContent) {
+                overlayData.userScreenData.serviceName = serviceOverlay.textContent.trim();
+                console.log('🏷️ 좌상단 서비스명:', overlayData.userScreenData.serviceName);
+            } else {
+                overlayData.userScreenData.serviceName = this.serviceName || 'AHSYSTEM Live';
+                console.log('🏷️ 기본 서비스명 사용:', overlayData.userScreenData.serviceName);
             }
             
-            // 시간 오버레이
+            // 2. 시간 오버레이 (우하단)
             const timeOverlay = document.querySelector('.overlay-time');
             if (timeOverlay) {
                 const timeElement = timeOverlay.querySelector('.overlay-current-time');
                 const dateElement = timeOverlay.querySelector('.overlay-date');
-                overlayData.time = timeElement ? timeElement.textContent : '';
-                overlayData.date = dateElement ? dateElement.textContent : '';
+                
+                if (timeElement && timeElement.textContent) {
+                    overlayData.userScreenData.currentTime = timeElement.textContent.trim();
+                    console.log('⏰ 우하단 시간 정보:', overlayData.userScreenData.currentTime);
+                }
+                
+                if (dateElement && dateElement.textContent) {
+                    overlayData.userScreenData.currentDate = dateElement.textContent.trim();
+                    console.log('📅 우하단 날짜 정보:', overlayData.userScreenData.currentDate);
+                }
             }
             
-            // 데이터 오버레이
+            // 시간 정보가 없으면 현재 시간으로 생성
+            if (!overlayData.userScreenData.currentTime || !overlayData.userScreenData.currentDate) {
+                const now = new Date();
+                
+                if (!overlayData.userScreenData.currentTime) {
+                    overlayData.userScreenData.currentTime = now.toLocaleTimeString('ko-KR', {
+                        hour12: false,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                }
+                
+                if (!overlayData.userScreenData.currentDate) {
+                    overlayData.userScreenData.currentDate = now.toLocaleDateString('ko-KR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        weekday: 'short'
+                    });
+                }
+                
+                console.log('⏰ 생성된 시간 정보:', overlayData.userScreenData.currentTime);
+                console.log('📅 생성된 날짜 정보:', overlayData.userScreenData.currentDate);
+            }
+            
+            // 3. 센서 데이터 오버레이 (좌하단)
             const dataOverlay = document.querySelector('.overlay-data');
             if (dataOverlay) {
                 const dataFields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED', 'AZIMUTH', 'TILT', 'ROLL'];
-                overlayData.sensorData = {};
+                let sensorDataCollected = 0;
                 
                 dataFields.forEach(field => {
                     const element = dataOverlay.querySelector(`[data-field="${field}"]`);
-                    if (element) {
-                        overlayData.sensorData[field] = element.textContent;
+                    if (element && element.textContent && element.textContent.trim() !== '--') {
+                        overlayData.userScreenData.sensorData[field] = element.textContent.trim();
+                        sensorDataCollected++;
+                        console.log(`📡 좌하단 센서 ${field}:`, overlayData.userScreenData.sensorData[field]);
+                    } else {
+                        overlayData.userScreenData.sensorData[field] = '--';
                     }
+                });
+                
+                console.log(`📊 좌하단 센서 데이터 수집 완료: ${sensorDataCollected}개 필드`);
+            } else {
+                console.warn('⚠️ 좌하단 센서 데이터 오버레이를 찾을 수 없습니다');
+                // 기본값으로 설정
+                const dataFields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED', 'AZIMUTH', 'TILT', 'ROLL'];
+                dataFields.forEach(field => {
+                    overlayData.userScreenData.sensorData[field] = '--';
                 });
             }
             
+            // 4. 화면 구성 정보 추가
+            overlayData.screenLayout = {
+                topLeft: `서비스명: ${overlayData.userScreenData.serviceName}`,
+                bottomLeft: `센서데이터: ${Object.keys(overlayData.userScreenData.sensorData).length}개 필드`,
+                bottomRight: `시간: ${overlayData.userScreenData.currentTime} | 날짜: ${overlayData.userScreenData.currentDate}`
+            };
+            
+            console.log('✅ 사용자 화면 오버레이 데이터 수집 완료');
+            console.log('📋 화면 구성:', overlayData.screenLayout);
+            
         } catch (error) {
-            console.warn('오버레이 데이터 수집 중 오류:', error);
+            console.warn('⚠️ 오버레이 데이터 수집 중 오류:', error);
+            
+            // 오류 발생시 기본값 설정
+            overlayData.userScreenData = {
+                serviceName: this.serviceName || 'AHSYSTEM Live',
+                currentTime: new Date().toLocaleTimeString('ko-KR'),
+                currentDate: new Date().toLocaleDateString('ko-KR'),
+                sensorData: {
+                    LATITUDE: '--',
+                    LONGITUDE: '--',
+                    ALTITUDE: '--',
+                    SPEED: '--',
+                    AZIMUTH: '--',
+                    TILT: '--',
+                    ROLL: '--'
+                }
+            };
+            
+            overlayData.error = error.message;
         }
         
         return overlayData;

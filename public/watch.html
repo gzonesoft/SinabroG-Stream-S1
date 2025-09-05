@@ -104,9 +104,10 @@
                         <!-- 메인 캡처 버튼 -->
                         <div class="text-center mb-4">
                             <button id="captureBtn" class="btn btn-danger btn-lg capture-main-btn" 
-                                    onclick="captureFrame()" title="화면 캡처">
+                                    onclick="captureFrame()" title="사용자 화면 그대로 캡처 (오버레이 포함)">
                                 <i class="fas fa-camera fa-3x d-block mb-2"></i>
-                                <span class="fw-bold">촬영하기</span>
+                                <span class="fw-bold">화면 캡처</span>
+                                <small class="d-block mt-1" style="font-size: 0.7rem; opacity: 0.9;">오버레이 포함</small>
                             </button>
                         </div>
                         
@@ -116,7 +117,7 @@
                                 <div class="col-6">
                                     <button class="btn btn-danger w-100" onclick="captureFrame()" id="realTimeCaptureBtn">
                                         <i class="fas fa-camera me-1"></i>
-                                        실시간 캡처
+                                        화면 캡처
                                     </button>
                                 </div>
                                 <div class="col-6">
