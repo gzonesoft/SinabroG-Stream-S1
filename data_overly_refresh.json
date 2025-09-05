@@ -1,10 +1,10 @@
 {
-    "LATITUDE": 37.566573,
-    "LONGITUDE": 126.977925,
-    "ALTITUDE": 158.6,
-    "SPEED": 13.9,
-    "AZIMUTH": 177.7,
-    "TILT": -1,
+    "LATITUDE": 37.566675,
+    "LONGITUDE": 126.977944,
+    "ALTITUDE": 151.8,
+    "SPEED": 15.4,
+    "AZIMUTH": 174.2,
+    "TILT": 0.6,
     "ROLL": 0.1,
-    "TIME": "2025-09-05T04:37:37.948Z"
+    "TIME": "2025-09-05T04:37:52.950Z"
 }
