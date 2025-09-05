@@ -612,29 +612,32 @@ class StreamViewer {
 
     // 캡처 버튼 표시/숨김
     showCaptureButton() {
-        const captureBtn = document.getElementById('captureBtn');
-        const captureInfo = document.getElementById('captureInfo');
+        const capturePanel = document.getElementById('capturePanel');
+        const streamInfoPanel = document.getElementById('streamInfoPanel');
         
-        if (captureBtn) {
-            captureBtn.style.display = 'block';
+        if (capturePanel) {
+            capturePanel.style.display = 'block';
         }
-        if (captureInfo) {
-            captureInfo.style.display = 'block';
+        if (streamInfoPanel) {
+            streamInfoPanel.style.display = 'block';
         }
+        
+        // 스트림 정보 업데이트
+        this.updateStreamInfo();
         
         // 캡처 개수 업데이트
         this.updateCaptureCount();
     }
 
     hideCaptureButton() {
-        const captureBtn = document.getElementById('captureBtn');
-        const captureInfo = document.getElementById('captureInfo');
+        const capturePanel = document.getElementById('capturePanel');
+        const streamInfoPanel = document.getElementById('streamInfoPanel');
         
-        if (captureBtn) {
-            captureBtn.style.display = 'none';
+        if (capturePanel) {
+            capturePanel.style.display = 'none';
         }
-        if (captureInfo) {
-            captureInfo.style.display = 'none';
+        if (streamInfoPanel) {
+            streamInfoPanel.style.display = 'none';
         }
     }
 
@@ -668,12 +671,44 @@ class StreamViewer {
         }, 50);
     }
 
+    // 스트림 정보 업데이트
+    updateStreamInfo() {
+        const streamKeyInfo = document.getElementById('streamKeyInfo');
+        const streamTimeInfo = document.getElementById('streamTimeInfo');
+        
+        if (streamKeyInfo && this.currentStreamKey) {
+            streamKeyInfo.textContent = this.currentStreamKey;
+        }
+        
+        if (streamTimeInfo) {
+            const now = new Date().toLocaleTimeString('ko-KR');
+            streamTimeInfo.textContent = now;
+        }
+    }
+
     // 캡처 개수 업데이트
     updateCaptureCount() {
         const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
         const count = captures.length;
         
-        // 갤러리 버튼 찾기 및 뱃지 업데이트
+        // 총 캡처 수 업데이트
+        const totalCountElement = document.getElementById('totalCaptureCount');
+        if (totalCountElement) {
+            totalCountElement.textContent = count;
+        }
+        
+        // 갤러리 뱃지 업데이트
+        const galleryBadge = document.getElementById('galleryBadge');
+        if (galleryBadge) {
+            if (count > 0) {
+                galleryBadge.textContent = count;
+                galleryBadge.style.display = 'inline';
+            } else {
+                galleryBadge.style.display = 'none';
+            }
+        }
+        
+        // 기존 갤러리 버튼들도 업데이트 (호환성)
         const galleryButtons = document.querySelectorAll('[onclick*="openCaptureGallery"]');
         galleryButtons.forEach(btn => {
             // 기존 뱃지 제거
@@ -682,14 +717,28 @@ class StreamViewer {
                 existingBadge.remove();
             }
             
-            // 새 뱃지 추가
-            if (count > 0) {
+            // 새 뱃지 추가 (갤러리 버튼이 별도가 아닌 경우)
+            if (count > 0 && !btn.querySelector('#galleryBadge')) {
                 const badge = document.createElement('span');
                 badge.className = 'badge bg-success ms-1';
                 badge.textContent = count;
                 btn.appendChild(badge);
             }
         });
+    }
+
+    // 자동 캡처 상태 업데이트
+    updateAutoCaptureStatus() {
+        const statusElement = document.getElementById('autoCaptureStatus');
+        if (statusElement) {
+            if (this.autoCapture) {
+                statusElement.textContent = 'ON';
+                statusElement.className = 'h4 text-success';
+            } else {
+                statusElement.textContent = 'OFF';
+                statusElement.className = 'h4 text-muted';
+            }
+        }
     }
 
     // 자동 캡처 함수
@@ -1032,19 +1081,22 @@ function toggleAutoCapture() {
     if (streamViewer.autoCapture) {
         // 자동 캡처 중지
         streamViewer.stopAutoCapture();
-        btn.innerHTML = '<i class="fas fa-clock me-1"></i>자동 캡처';
-        btn.className = 'btn btn-outline-success btn-sm';
+        btn.innerHTML = '<i class="fas fa-clock me-2"></i>자동 캡처 시작';
+        btn.className = 'btn btn-outline-success w-100 mb-2';
         streamViewer.showAlert('자동 캡처가 중지되었습니다.', 'info');
     } else {
         // 자동 캡처 시작
         const interval = prompt('자동 캡처 간격을 입력하세요 (초 단위):', '30');
         if (interval && !isNaN(interval) && parseInt(interval) > 0) {
             streamViewer.startAutoCapture(parseInt(interval));
-            btn.innerHTML = '<i class="fas fa-stop me-1"></i>자동 중지';
-            btn.className = 'btn btn-warning btn-sm';
+            btn.innerHTML = '<i class="fas fa-stop me-2"></i>자동 캡처 중지';
+            btn.className = 'btn btn-warning w-100 mb-2';
             streamViewer.showAlert(`${interval}초마다 자동 캡처가 시작되었습니다.`, 'success');
         }
     }
+    
+    // 상태 업데이트
+    streamViewer.updateAutoCaptureStatus();
 }
 
 // StreamViewer 클래스에 자동 캡처 메서드 추가
@@ -1061,6 +1113,7 @@ StreamViewer.prototype.startAutoCapture = function(intervalSeconds) {
         }
     }, intervalSeconds * 1000);
     
+    this.updateAutoCaptureStatus();
     console.log(`🤖 자동 캡처 시작: ${intervalSeconds}초 간격`);
 };
 
@@ -1070,5 +1123,6 @@ StreamViewer.prototype.stopAutoCapture = function() {
         this.autoCaptureInterval = null;
     }
     this.autoCapture = false;
+    this.updateAutoCaptureStatus();
     console.log('🛑 자동 캡처 중지');
 };
