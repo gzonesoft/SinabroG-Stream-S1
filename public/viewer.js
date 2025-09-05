@@ -9,6 +9,8 @@ class StreamViewer {
         this.serviceName = 'AHSYSTEM Live';
         this.lastDataHash = null;
         this.debugMode = false;
+        this.autoCapture = false;
+        this.autoCaptureInterval = null;
         this.init();
     }
     
@@ -16,10 +18,18 @@ class StreamViewer {
         // URL에서 스트림 키 가져오기
         const urlParams = new URLSearchParams(window.location.search);
         const streamKey = urlParams.get('key');
+        const autoCapture = urlParams.get('autoCapture') === 'true';
         
         if (streamKey) {
             document.getElementById('streamKeyInput').value = streamKey;
             this.startViewing(streamKey);
+            
+            // 자동 캡처 요청시
+            if (autoCapture) {
+                setTimeout(() => {
+                    this.autoCaptureAfterLoad();
+                }, 3000); // 3초 후 자동 캡처
+            }
         }
     }
     
@@ -603,15 +613,118 @@ class StreamViewer {
     // 캡처 버튼 표시/숨김
     showCaptureButton() {
         const captureBtn = document.getElementById('captureBtn');
+        const captureInfo = document.getElementById('captureInfo');
+        
         if (captureBtn) {
             captureBtn.style.display = 'block';
         }
+        if (captureInfo) {
+            captureInfo.style.display = 'block';
+        }
+        
+        // 캡처 개수 업데이트
+        this.updateCaptureCount();
     }
 
     hideCaptureButton() {
         const captureBtn = document.getElementById('captureBtn');
+        const captureInfo = document.getElementById('captureInfo');
+        
         if (captureBtn) {
             captureBtn.style.display = 'none';
+        }
+        if (captureInfo) {
+            captureInfo.style.display = 'none';
+        }
+    }
+
+    // 캡처 효과 표시 (화면 플래시)
+    showCaptureEffect() {
+        const flashDiv = document.createElement('div');
+        flashDiv.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: white;
+            z-index: 99999;
+            opacity: 0.8;
+            pointer-events: none;
+        `;
+        
+        document.body.appendChild(flashDiv);
+        
+        // 플래시 효과
+        setTimeout(() => {
+            flashDiv.style.opacity = '0';
+            flashDiv.style.transition = 'opacity 0.3s ease';
+            
+            setTimeout(() => {
+                if (flashDiv.parentElement) {
+                    flashDiv.remove();
+                }
+            }, 300);
+        }, 50);
+    }
+
+    // 캡처 개수 업데이트
+    updateCaptureCount() {
+        const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+        const count = captures.length;
+        
+        // 갤러리 버튼 찾기 및 뱃지 업데이트
+        const galleryButtons = document.querySelectorAll('[onclick*="openCaptureGallery"]');
+        galleryButtons.forEach(btn => {
+            // 기존 뱃지 제거
+            const existingBadge = btn.querySelector('.badge');
+            if (existingBadge) {
+                existingBadge.remove();
+            }
+            
+            // 새 뱃지 추가
+            if (count > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-success ms-1';
+                badge.textContent = count;
+                btn.appendChild(badge);
+            }
+        });
+    }
+
+    // 자동 캡처 함수
+    async autoCaptureAfterLoad() {
+        try {
+            console.log('🤖 자동 캡처 시작...');
+            
+            // 비디오가 로드되었는지 확인
+            const video = document.querySelector('video');
+            const videoContainer = document.querySelector('.video-container');
+            
+            if (!video || !videoContainer) {
+                throw new Error('비디오 컨테이너를 찾을 수 없습니다.');
+            }
+            
+            // 비디오 재생 상태 확인
+            if (video.readyState < 2) {
+                console.log('⏳ 비디오 로딩 대기 중...');
+                setTimeout(() => this.autoCaptureAfterLoad(), 2000);
+                return;
+            }
+            
+            // 캡처 실행
+            await this.captureVideoFrame();
+            
+            // 캡처 후 3초 뒤에 창 닫기
+            setTimeout(() => {
+                if (window.opener) {
+                    window.close();
+                }
+            }, 3000);
+            
+        } catch (error) {
+            console.error('자동 캡처 실패:', error);
+            this.showAlert('자동 캡처에 실패했습니다: ' + error.message, 'error');
         }
     }
 
@@ -656,12 +769,13 @@ class StreamViewer {
             // 사용자에게 알림
             this.showAlert('화면이 성공적으로 캡처되었습니다!', 'success');
 
-            // 카메라 페이지로 이동할지 물어보기
-            const goToGallery = confirm('캡처가 완료되었습니다. 갤러리 페이지로 이동하시겠습니까?');
-            if (goToGallery) {
-                window.open(`camera.html?key=${this.currentStreamKey}`, '_blank');
-            }
+            // 캡처 효과 (화면 플래시)
+            this.showCaptureEffect();
 
+            // 캡처 갤러리 버튼에 뱃지 표시
+            this.updateCaptureCount();
+
+            console.log('✅ 캡처 완료:', captureData.id);
             return captureData;
 
         } catch (error) {
@@ -814,6 +928,7 @@ window.addEventListener('beforeunload', () => {
         }
         streamViewer.stopOverlayUpdate();
         streamViewer.stopDataOverlayUpdate();
+        streamViewer.stopAutoCapture(); // 자동 캡처 정리
     }
 });
 
@@ -893,3 +1008,67 @@ async function captureFrame() {
         console.error('캡처 실행 실패:', error);
     }
 }
+
+// 캡처 갤러리 열기
+function openCaptureGallery() {
+    if (!streamViewer || !streamViewer.currentStreamKey) {
+        alert('스트림 키가 설정되지 않았습니다.');
+        return;
+    }
+    
+    const galleryUrl = `camera.html?key=${streamViewer.currentStreamKey}`;
+    window.open(galleryUrl, '_blank');
+}
+
+// 자동 캡처 토글
+function toggleAutoCapture() {
+    if (!streamViewer) {
+        alert('스트림 뷰어가 초기화되지 않았습니다.');
+        return;
+    }
+    
+    const btn = document.getElementById('autoCaptureBtn');
+    
+    if (streamViewer.autoCapture) {
+        // 자동 캡처 중지
+        streamViewer.stopAutoCapture();
+        btn.innerHTML = '<i class="fas fa-clock me-1"></i>자동 캡처';
+        btn.className = 'btn btn-outline-success btn-sm';
+        streamViewer.showAlert('자동 캡처가 중지되었습니다.', 'info');
+    } else {
+        // 자동 캡처 시작
+        const interval = prompt('자동 캡처 간격을 입력하세요 (초 단위):', '30');
+        if (interval && !isNaN(interval) && parseInt(interval) > 0) {
+            streamViewer.startAutoCapture(parseInt(interval));
+            btn.innerHTML = '<i class="fas fa-stop me-1"></i>자동 중지';
+            btn.className = 'btn btn-warning btn-sm';
+            streamViewer.showAlert(`${interval}초마다 자동 캡처가 시작되었습니다.`, 'success');
+        }
+    }
+}
+
+// StreamViewer 클래스에 자동 캡처 메서드 추가
+StreamViewer.prototype.startAutoCapture = function(intervalSeconds) {
+    this.stopAutoCapture(); // 기존 자동 캡처 중지
+    
+    this.autoCapture = true;
+    this.autoCaptureInterval = setInterval(async () => {
+        try {
+            await this.captureVideoFrame();
+            console.log('✅ 자동 캡처 완료');
+        } catch (error) {
+            console.error('❌ 자동 캡처 실패:', error);
+        }
+    }, intervalSeconds * 1000);
+    
+    console.log(`🤖 자동 캡처 시작: ${intervalSeconds}초 간격`);
+};
+
+StreamViewer.prototype.stopAutoCapture = function() {
+    if (this.autoCaptureInterval) {
+        clearInterval(this.autoCaptureInterval);
+        this.autoCaptureInterval = null;
+    }
+    this.autoCapture = false;
+    console.log('🛑 자동 캡처 중지');
+};

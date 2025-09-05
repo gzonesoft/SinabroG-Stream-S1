@@ -223,8 +223,15 @@
                     document.getElementById('captureFromStreamBtn').disabled = false;
                 }
 
+                this.loadCaptures();
                 this.renderGallery();
                 this.loadStreamStatus();
+
+                // 새로고침 주기 (새 캡처 확인용)
+                setInterval(() => {
+                    this.loadCaptures();
+                    this.renderGallery();
+                }, 10000); // 10초마다 새로고침
             }
 
             async loadStreamStatus() {
@@ -243,7 +250,19 @@
                 }
             }
 
+            loadCaptures() {
+                this.captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+                
+                // 현재 스트림 키에 해당하는 캡처만 필터링 (선택사항)
+                if (this.currentStreamKey) {
+                    this.captures = this.captures.filter(c => 
+                        !c.streamKey || c.streamKey === this.currentStreamKey || c.streamKey === 'unknown'
+                    );
+                }
+            }
+
             renderGallery() {
+                this.loadCaptures(); // 렌더링 전에 최신 데이터 로드
                 const gallery = document.getElementById('captureGallery');
                 const emptyMessage = document.getElementById('emptyGallery');
 
@@ -295,10 +314,26 @@
             }
 
             async captureFromStream() {
-                // 이 기능은 원래 페이지에서 캡처를 수행하고 여기로 데이터를 전달받아야 합니다
-                // 임시로 alert를 표시하고, 실제로는 스트림 페이지로 리다이렉트
-                alert('스트림 페이지에서 촬영 버튼을 사용해주세요.');
-                this.goBackToWatch();
+                if (!this.currentStreamKey) {
+                    this.showAlert('스트림 키가 설정되지 않았습니다.', 'warning');
+                    return;
+                }
+
+                // 캡처를 위해 watch.html 페이지를 새 탭에서 열고 자동 캡처 실행
+                const watchUrl = `watch.html?key=${this.currentStreamKey}&autoCapture=true`;
+                const watchWindow = window.open(watchUrl, 'streamCapture', 'width=1200,height=800');
+                
+                if (watchWindow) {
+                    this.showAlert('스트림 페이지가 열렸습니다. 자동으로 캡처됩니다.', 'info');
+                    
+                    // 5초 후 새로고침하여 새 캡처를 확인
+                    setTimeout(() => {
+                        this.loadCaptures();
+                        this.renderGallery();
+                    }, 5000);
+                } else {
+                    this.showAlert('팝업이 차단되었습니다. 팝업을 허용해주세요.', 'warning');
+                }
             }
 
             addCapture(captureData) {

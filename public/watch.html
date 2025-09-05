@@ -78,10 +78,22 @@
                             </div>
                             <!-- 촬영 버튼 -->
                             <div class="capture-controls position-absolute top-0 end-0 m-3" style="z-index: 100;">
-                                <button id="captureBtn" class="btn btn-danger btn-lg rounded-circle shadow" 
-                                        onclick="captureFrame()" title="화면 캡처" style="display: none;">
+                                <button id="captureBtn" class="btn btn-danger btn-lg rounded-circle shadow-lg" 
+                                        onclick="captureFrame()" title="화면 캡처" style="display: none; width: 70px; height: 70px;">
                                     <i class="fas fa-camera fa-2x"></i>
                                 </button>
+                            </div>
+                            
+                            <!-- 캡처 관련 추가 컨트롤 -->
+                            <div class="capture-info position-absolute bottom-0 start-0 m-3" style="z-index: 100; display: none;" id="captureInfo">
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-light btn-sm" onclick="openCaptureGallery()" title="캡처 갤러리">
+                                        <i class="fas fa-images me-1"></i>갤러리
+                                    </button>
+                                    <button class="btn btn-outline-success btn-sm" onclick="toggleAutoCapture()" title="자동 캡처" id="autoCaptureBtn">
+                                        <i class="fas fa-clock me-1"></i>자동 캡처
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <!-- <div class="alert alert-info">
