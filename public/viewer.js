@@ -1161,16 +1161,38 @@ class StreamViewer {
         }
     }
 
-    // 화면 캡처 기능 (오버레이 포함 - 사용자가 보는 화면 그대로)
+    // 화면 캡처 기능 (비디오 + 오버레이 완전 캡처)
     async captureVideoFrame() {
         try {
             // 비디오 컨테이너 찾기 (오버레이 포함된 전체 컨테이너)
             const videoContainer = document.querySelector('.video-container');
+            const video = document.querySelector('video');
+            
             if (!videoContainer) {
                 throw new Error('비디오 컨테이너를 찾을 수 없습니다.');
             }
+            
+            if (!video) {
+                throw new Error('비디오 요소를 찾을 수 없습니다.');
+            }
 
-            console.log('📸 사용자 화면 그대로 캡처 시작 (모든 오버레이 포함)...');
+            console.log('📸 비디오 + 오버레이 완전 캡처 시작...');
+            console.log('🎥 비디오 상태:', {
+                readyState: video.readyState,
+                videoWidth: video.videoWidth,
+                videoHeight: video.videoHeight,
+                currentTime: video.currentTime,
+                paused: video.paused
+            });
+            
+            // 비디오가 재생 중인지 확인
+            if (video.readyState < 2) {
+                throw new Error('비디오가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.');
+            }
+            
+            if (video.videoWidth === 0 || video.videoHeight === 0) {
+                throw new Error('비디오 크기 정보를 가져올 수 없습니다.');
+            }
             
             // 캡처 전 준비: 모든 오버레이가 완벽히 표시되도록 확인
             const overlays = videoContainer.querySelectorAll('.video-overlay');
@@ -1179,7 +1201,7 @@ class StreamViewer {
                 overlay.style.opacity = '1';
                 overlay.style.visibility = 'visible';
                 overlay.style.display = 'block';
-                overlay.style.zIndex = '15'; // 오버레이가 위에 표시되도록
+                overlay.style.zIndex = '15';
             });
             
             // 서비스명 오버레이 강제 업데이트
@@ -1201,7 +1223,6 @@ class StreamViewer {
             // 데이터 오버레이 강제 업데이트
             const dataOverlay = videoContainer.querySelector('.overlay-data');
             if (dataOverlay) {
-                // 최신 데이터로 즉시 업데이트 시도
                 await this.updateDataOverlay(dataOverlay);
                 dataOverlay.style.opacity = '1';
                 dataOverlay.style.visibility = 'visible';
@@ -1210,110 +1231,147 @@ class StreamViewer {
             // 오버레이 렌더링 완료 대기
             await new Promise(resolve => setTimeout(resolve, 300));
             
-            // 고품질 캡처를 위한 html2canvas 설정
-            const canvas = await html2canvas(videoContainer, {
-                allowTaint: true,
-                useCORS: true,
-                backgroundColor: '#000000',
-                width: videoContainer.offsetWidth,
-                height: videoContainer.offsetHeight,
-                scale: 2, // 고화질을 위해 스케일 2배로 증가
-                logging: true, // 디버깅을 위해 로깅 활성화
-                removeContainer: false,
-                foreignObjectRendering: true, // 더 나은 텍스트 렌더링
-                imageTimeout: 15000, // 이미지 로딩 타임아웃 증가
-                onclone: (clonedDoc) => {
-                    console.log('🔄 html2canvas 클론 문서 처리 시작...');
-                    
-                    // 클론된 문서에서 모든 오버레이가 완벽히 표시되도록 설정
-                    const clonedOverlays = clonedDoc.querySelectorAll('.video-overlay');
-                    clonedOverlays.forEach((overlay, index) => {
-                        overlay.style.pointerEvents = 'none';
-                        overlay.style.opacity = '1';
-                        overlay.style.visibility = 'visible';
-                        overlay.style.display = 'block';
-                        overlay.style.position = 'absolute';
-                        overlay.style.zIndex = (15 + index).toString();
-                        overlay.style.color = 'white';
-                        overlay.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 0.8)';
-                        
-                        console.log(`📋 클론된 오버레이 ${index + 1} 설정 완료:`, overlay.className);
-                    });
-                    
-                    // 비디오 요소 최적화
-                    const clonedVideo = clonedDoc.querySelector('video');
-                    if (clonedVideo) {
-                        clonedVideo.style.objectFit = 'contain';
-                        clonedVideo.style.width = '100%';
-                        clonedVideo.style.height = '100%';
-                        clonedVideo.style.background = '#000000';
-                        console.log('🎥 클론된 비디오 요소 설정 완료');
-                    }
-                    
-                    // 서비스명 오버레이 재확인
-                    const clonedServiceOverlay = clonedDoc.querySelector('.overlay-service-name');
-                    if (clonedServiceOverlay) {
-                        clonedServiceOverlay.textContent = this.serviceName;
-                        console.log('🏷️ 클론된 서비스명 오버레이:', this.serviceName);
-                    }
-                    
-                    // 시간 오버레이 재확인
-                    const clonedTimeOverlay = clonedDoc.querySelector('.overlay-time');
-                    if (clonedTimeOverlay) {
-                        const now = new Date();
-                        const timeString = now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                        const dateString = now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
-                        
-                        const timeElement = clonedTimeOverlay.querySelector('.overlay-current-time');
-                        const dateElement = clonedTimeOverlay.querySelector('.overlay-date');
-                        
-                        if (timeElement) timeElement.textContent = timeString;
-                        if (dateElement) dateElement.textContent = dateString;
-                        
-                        console.log('⏰ 클론된 시간 오버레이:', timeString, dateString);
-                    }
-                    
-                    console.log('✅ html2canvas 클론 문서 처리 완료');
-                }
+            // === 1단계: 비디오를 Canvas에 직접 그리기 ===
+            const containerRect = videoContainer.getBoundingClientRect();
+            const scale = 2; // 고화질을 위한 스케일
+            const finalWidth = containerRect.width * scale;
+            const finalHeight = containerRect.height * scale;
+            
+            // 최종 캔버스 생성
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = finalWidth;
+            finalCanvas.height = finalHeight;
+            const finalCtx = finalCanvas.getContext('2d');
+            
+            // 배경을 검은색으로 설정
+            finalCtx.fillStyle = '#000000';
+            finalCtx.fillRect(0, 0, finalWidth, finalHeight);
+            
+            // 비디오를 캔버스에 그리기
+            const videoRect = video.getBoundingClientRect();
+            const containerOffsetX = (videoRect.left - containerRect.left) * scale;
+            const containerOffsetY = (videoRect.top - containerRect.top) * scale;
+            const videoWidth = videoRect.width * scale;
+            const videoHeight = videoRect.height * scale;
+            
+            console.log('🎬 비디오 Canvas 그리기:', {
+                containerSize: `${finalWidth}x${finalHeight}`,
+                videoSize: `${videoWidth}x${videoHeight}`,
+                videoOffset: `${containerOffsetX}, ${containerOffsetY}`
             });
+            
+            // 비디오 프레임을 캔버스에 그리기
+            finalCtx.drawImage(video, containerOffsetX, containerOffsetY, videoWidth, videoHeight);
+            
+            // === 2단계: 오버레이를 html2canvas로 캡처 후 합성 ===
+            console.log('🎯 오버레이 캡처 시작...');
+            
+            // 임시로 비디오를 숨기고 오버레이만 캡처
+            const originalVideoDisplay = video.style.display;
+            video.style.display = 'none';
+            
+            try {
+                const overlayCanvas = await html2canvas(videoContainer, {
+                    allowTaint: true,
+                    useCORS: true,
+                    backgroundColor: null, // 투명 배경
+                    width: containerRect.width,
+                    height: containerRect.height,
+                    scale: scale,
+                    logging: true,
+                    removeContainer: false,
+                    foreignObjectRendering: true,
+                    imageTimeout: 15000,
+                    onclone: (clonedDoc) => {
+                        console.log('🔄 오버레이 클론 문서 처리...');
+                        
+                        // 클론된 비디오 숨기기
+                        const clonedVideo = clonedDoc.querySelector('video');
+                        if (clonedVideo) {
+                            clonedVideo.style.display = 'none';
+                        }
+                        
+                        // 클론된 오버레이 최적화
+                        const clonedOverlays = clonedDoc.querySelectorAll('.video-overlay');
+                        clonedOverlays.forEach((overlay, index) => {
+                            overlay.style.pointerEvents = 'none';
+                            overlay.style.opacity = '1';
+                            overlay.style.visibility = 'visible';
+                            overlay.style.display = 'block';
+                            overlay.style.position = 'absolute';
+                            overlay.style.zIndex = (15 + index).toString();
+                        });
+                        
+                        // 서비스명 오버레이 재확인
+                        const clonedServiceOverlay = clonedDoc.querySelector('.overlay-service-name');
+                        if (clonedServiceOverlay) {
+                            clonedServiceOverlay.textContent = this.serviceName;
+                        }
+                        
+                        // 시간 오버레이 재확인
+                        const clonedTimeOverlay = clonedDoc.querySelector('.overlay-time');
+                        if (clonedTimeOverlay) {
+                            const now = new Date();
+                            const timeString = now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                            const dateString = now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+                            
+                            const timeElement = clonedTimeOverlay.querySelector('.overlay-current-time');
+                            const dateElement = clonedTimeOverlay.querySelector('.overlay-date');
+                            
+                            if (timeElement) timeElement.textContent = timeString;
+                            if (dateElement) dateElement.textContent = dateString;
+                        }
+                    }
+                });
+                
+                // 오버레이를 최종 캔버스에 합성
+                finalCtx.globalCompositeOperation = 'source-over';
+                finalCtx.drawImage(overlayCanvas, 0, 0);
+                
+                console.log('✅ 오버레이 합성 완료');
+                
+            } finally {
+                // 비디오 다시 표시
+                video.style.display = originalVideoDisplay;
+            }
 
             // 캔버스를 최고 품질 이미지 데이터로 변환
-            const dataUrl = canvas.toDataURL('image/png', 1.0);
+            const dataUrl = finalCanvas.toDataURL('image/png', 1.0);
             
             // 현재 화면의 모든 오버레이 정보 수집
             const overlayData = this.collectOverlayData();
             
-            // 캡처 데이터 생성 (사용자가 보는 화면 정보 포함)
+            // 캡처 데이터 생성
             const captureData = {
                 id: this.generateCaptureId(),
                 dataUrl: dataUrl,
                 timestamp: new Date().toISOString(),
                 streamKey: this.currentStreamKey || 'unknown',
-                width: canvas.width,
-                height: canvas.height,
+                width: finalCanvas.width,
+                height: finalCanvas.height,
                 overlayData: overlayData,
-                captureType: 'user_screen_exact', // 사용자 화면 정확 복사임을 표시
-                captureNote: '좌상단 로고, 좌하단 센서데이터, 우하단 시간정보 포함'
+                captureType: 'video_overlay_composite',
+                captureNote: '비디오 + 오버레이 완전 합성 캡처',
+                captureMethod: 'canvas_composite'
             };
 
             // localStorage에 저장
             this.saveCaptureToStorage(captureData);
 
-            // 성공 알림 (구체적 정보 포함)
-            this.showAlert('사용자 화면 그대로 캡처 완료! (로고+센서데이터+시간정보 포함)', 'success');
+            // 성공 알림
+            this.showAlert('비디오 + 오버레이 완전 캡처 성공!', 'success');
 
             // 캡처 효과 (화면 플래시)
             this.showCaptureEffect();
 
-            console.log('✅ 사용자 화면 정확 캡처 완료:', captureData.id);
-            console.log('📊 캡처 해상도:', `${canvas.width}x${canvas.height}`);
+            console.log('✅ 비디오 + 오버레이 완전 캡처 완료:', captureData.id);
+            console.log('📊 최종 해상도:', `${finalCanvas.width}x${finalCanvas.height}`);
             console.log('🎯 포함된 오버레이 정보:', overlayData);
-            console.log('📝 캡처 설명:', captureData.captureNote);
             
             return captureData;
 
         } catch (error) {
-            console.error('사용자 화면 캡처 실패:', error);
+            console.error('비디오 캡처 실패:', error);
             this.showAlert('화면 캡처에 실패했습니다: ' + error.message, 'error');
             throw error;
         }
