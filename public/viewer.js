@@ -11,6 +11,8 @@ class StreamViewer {
         this.debugMode = false;
         this.autoCapture = false;
         this.autoCaptureInterval = null;
+        this.recentCaptures = [];
+        this.maxRecentCaptures = 3; // 최대 3개까지 표시
         this.init();
     }
     
@@ -31,6 +33,9 @@ class StreamViewer {
                 }, 3000); // 3초 후 자동 캡처
             }
         }
+        
+        // 초기 캡처 목록 로드
+        this.updateCaptureCount();
     }
     
     startViewing(streamKey = null) {
@@ -710,12 +715,6 @@ class StreamViewer {
         const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
         const count = captures.length;
         
-        // 총 캡처 수 업데이트
-        const totalCountElement = document.getElementById('totalCaptureCount');
-        if (totalCountElement) {
-            totalCountElement.textContent = count;
-        }
-        
         // 갤러리 뱃지 업데이트
         const galleryBadge = document.getElementById('galleryBadge');
         if (galleryBadge) {
@@ -732,7 +731,7 @@ class StreamViewer {
         galleryButtons.forEach(btn => {
             // 기존 뱃지 제거
             const existingBadge = btn.querySelector('.badge');
-            if (existingBadge) {
+            if (existingBadge && !existingBadge.id) {
                 existingBadge.remove();
             }
             
@@ -744,20 +743,171 @@ class StreamViewer {
                 btn.appendChild(badge);
             }
         });
+        
+        // 실시간 캡처 목록 업데이트
+        this.updateRecentCaptures();
     }
 
     // 자동 캡처 상태 업데이트
     updateAutoCaptureStatus() {
-        const statusElement = document.getElementById('autoCaptureStatus');
-        if (statusElement) {
-            if (this.autoCapture) {
-                statusElement.textContent = 'ON';
-                statusElement.className = 'h4 text-success';
-            } else {
-                statusElement.textContent = 'OFF';
-                statusElement.className = 'h4 text-muted';
-            }
+        // 자동 캡처 상태는 제거되었으므로 빈 함수로 유지
+        console.log('Auto capture status:', this.autoCapture ? 'ON' : 'OFF');
+    }
+
+    // 실시간 캡처 목록 업데이트
+    updateRecentCaptures() {
+        const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+        const recentCapturesSection = document.getElementById('recentCapturesSection');
+        const recentCapturesContainer = document.getElementById('recentCapturesContainer');
+        
+        if (!recentCapturesSection || !recentCapturesContainer) {
+            return;
         }
+        
+        // 최근 캡처가 있으면 섹션 표시
+        if (captures.length > 0) {
+            recentCapturesSection.style.display = 'block';
+            
+            // 최신 캡처 3개만 표시
+            const recentCaptures = captures.slice(0, this.maxRecentCaptures);
+            
+            // 캡처 목록 렌더링
+            recentCapturesContainer.innerHTML = recentCaptures.map((capture, index) => `
+                <div class="recent-capture-item" data-capture-id="${capture.id}">
+                    <img src="${capture.dataUrl}" 
+                         alt="캡처 ${index + 1}" 
+                         onclick="streamViewer.viewCaptureDetail('${capture.id}')"
+                         title="클릭하여 크게 보기">
+                    <div class="recent-capture-info">
+                        <p class="capture-time">${this.formatCaptureTime(capture.timestamp)}</p>
+                        <p class="capture-id">#${capture.id.substring(8, 16)}</p>
+                    </div>
+                    <div class="recent-capture-actions">
+                        <button class="btn btn-outline-primary btn-sm" 
+                                onclick="streamViewer.downloadCapture('${capture.id}')"
+                                title="다운로드">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" 
+                                onclick="streamViewer.deleteRecentCapture('${capture.id}')"
+                                title="삭제">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+        } else {
+            // 캡처가 없으면 빈 메시지 표시
+            recentCapturesContainer.innerHTML = `
+                <div class="empty-captures-message">
+                    <i class="fas fa-camera-retro d-block"></i>
+                    아직 캡처된 사진이 없습니다
+                </div>
+            `;
+        }
+    }
+
+    // 캡처 시간 포맷팅
+    formatCaptureTime(timestamp) {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSeconds = Math.floor(diffMs / 1000);
+        const diffMinutes = Math.floor(diffSeconds / 60);
+        const diffHours = Math.floor(diffMinutes / 60);
+        
+        if (diffSeconds < 60) {
+            return `${diffSeconds}초 전`;
+        } else if (diffMinutes < 60) {
+            return `${diffMinutes}분 전`;
+        } else if (diffHours < 24) {
+            return `${diffHours}시간 전`;
+        } else {
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString().substring(0, 5);
+        }
+    }
+
+    // 캡처 상세 보기
+    viewCaptureDetail(captureId) {
+        const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+        const capture = captures.find(c => c.id === captureId);
+        
+        if (!capture) {
+            this.showAlert('캡처를 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        // 새 창에서 이미지 크게 보기
+        const newWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+        newWindow.document.write(`
+            <html>
+            <head>
+                <title>캡처 상세 - ${new Date(capture.timestamp).toLocaleString()}</title>
+                <style>
+                    body { margin: 0; padding: 20px; background: #000; color: #fff; font-family: Arial, sans-serif; }
+                    img { max-width: 100%; height: auto; display: block; margin: 0 auto; border: 2px solid #fff; }
+                    .info { text-align: center; margin: 20px 0; }
+                    .download-btn { 
+                        background: #007bff; color: white; padding: 10px 20px; 
+                        border: none; border-radius: 5px; cursor: pointer; margin: 10px;
+                    }
+                    .download-btn:hover { background: #0056b3; }
+                </style>
+            </head>
+            <body>
+                <div class="info">
+                    <h2>스트림 캡처</h2>
+                    <p>스트림: ${capture.streamKey}</p>
+                    <p>시간: ${new Date(capture.timestamp).toLocaleString()}</p>
+                    <p>해상도: ${capture.width || '알 수 없음'} × ${capture.height || '알 수 없음'}</p>
+                </div>
+                <img src="${capture.dataUrl}" alt="캡처 이미지">
+                <div class="info">
+                    <button class="download-btn" onclick="downloadImage()">다운로드</button>
+                    <button class="download-btn" onclick="window.close()">닫기</button>
+                </div>
+                <script>
+                    function downloadImage() {
+                        const link = document.createElement('a');
+                        link.download = 'stream-capture-${capture.streamKey}-${new Date(capture.timestamp).toISOString().slice(0, 19).replace(/:/g, '-')}.png';
+                        link.href = '${capture.dataUrl}';
+                        link.click();
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+    }
+
+    // 최근 캡처 삭제
+    deleteRecentCapture(captureId) {
+        if (confirm('이 캡처를 삭제하시겠습니까?')) {
+            let captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+            captures = captures.filter(c => c.id !== captureId);
+            localStorage.setItem('streamCaptures', JSON.stringify(captures));
+            
+            this.updateCaptureCount();
+            this.showAlert('캡처가 삭제되었습니다.', 'info');
+        }
+    }
+
+    // 캡처 다운로드
+    downloadCapture(captureId) {
+        const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+        const capture = captures.find(c => c.id === captureId);
+        
+        if (!capture) {
+            this.showAlert('캡처를 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        const link = document.createElement('a');
+        link.download = `stream-capture-${capture.streamKey}-${new Date(capture.timestamp).toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+        link.href = capture.dataUrl;
+        link.click();
+        
+        this.showAlert('캡처가 다운로드되었습니다.', 'success');
     }
 
     // 자동 캡처 함수
@@ -871,6 +1021,10 @@ class StreamViewer {
             
             localStorage.setItem('streamCaptures', JSON.stringify(captures));
             console.log('✅ 캡처 데이터 저장 완료:', captureData.id);
+            
+            // 실시간 캡처 목록 업데이트
+            this.updateCaptureCount();
+            
         } catch (error) {
             console.error('캡처 데이터 저장 실패:', error);
             throw new Error('저장 공간 부족 또는 저장 오류');

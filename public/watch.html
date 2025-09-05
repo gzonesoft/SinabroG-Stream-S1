@@ -110,54 +110,40 @@
                             </button>
                         </div>
                         
-                        <!-- 캡처 통계 -->
-                        <div class="capture-stats mb-4">
-                            <div class="row text-center">
-                                <div class="col-6">
-                                    <div class="stat-box">
-                                        <h6 class="text-muted mb-1">총 캡처</h6>
-                                        <span class="h4 text-primary" id="totalCaptureCount">0</span>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="stat-box">
-                                        <h6 class="text-muted mb-1">자동 캡처</h6>
-                                        <span class="h4" id="autoCaptureStatus">OFF</span>
-                                    </div>
-                                </div>
-                            </div>
+                        <!-- 갤러리 버튼 -->
+                        <button class="btn btn-outline-primary w-100 mb-3" onclick="openCaptureGallery()">
+                            <i class="fas fa-images me-2"></i>
+                            캡처 갤러리 열기
+                            <span class="badge bg-success ms-2" id="galleryBadge" style="display: none;">0</span>
+                        </button>
+                        
+                        <!-- 자동 캡처 설정 -->
+                        <div class="auto-capture-control">
+                            <button class="btn btn-outline-success w-100 mb-2" onclick="toggleAutoCapture()" id="autoCaptureBtn">
+                                <i class="fas fa-clock me-2"></i>
+                                자동 캡처 시작
+                            </button>
+                            <small class="text-muted d-block text-center">
+                                일정 간격으로 자동 촬영
+                            </small>
                         </div>
                         
-                        <!-- 캡처 옵션 -->
-                        <div class="capture-options">
+                        <!-- 실시간 캡처 이미지 표시 영역 -->
+                        <div class="mt-4" id="recentCapturesSection" style="display: none;">
+                            <hr class="mb-3">
                             <h6 class="mb-3">
-                                <i class="fas fa-cog me-2"></i>
-                                캡처 옵션
+                                <i class="fas fa-history me-2"></i>
+                                최근 캡처
                             </h6>
-                            
-                            <!-- 갤러리 버튼 -->
-                            <button class="btn btn-outline-primary w-100 mb-3" onclick="openCaptureGallery()">
-                                <i class="fas fa-images me-2"></i>
-                                캡처 갤러리 열기
-                                <span class="badge bg-success ms-2" id="galleryBadge" style="display: none;">0</span>
-                            </button>
-                            
-                            <!-- 자동 캡처 설정 -->
-                            <div class="auto-capture-control">
-                                <button class="btn btn-outline-success w-100 mb-2" onclick="toggleAutoCapture()" id="autoCaptureBtn">
-                                    <i class="fas fa-clock me-2"></i>
-                                    자동 캡처 시작
-                                </button>
-                                <small class="text-muted d-block text-center">
-                                    일정 간격으로 자동 촬영
-                                </small>
+                            <div id="recentCapturesContainer" class="d-flex flex-column gap-2">
+                                <!-- 최근 캡처된 이미지들이 여기에 실시간으로 표시됩니다 -->
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- 스트림 정보 패널 -->
-                <div class="card mt-3" id="streamInfoPanel">
+                <!-- 스트림 정보 패널 (숨김 처리) -->
+                <div class="card mt-3" id="streamInfoPanel" style="display: none;">
                     <div class="card-header bg-info text-white">
                         <h6 class="mb-0">
                             <i class="fas fa-info-circle me-2"></i>

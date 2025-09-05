@@ -568,3 +568,127 @@ body {
         font-size: 1.2rem;
     }
 }
+
+/* 실시간 캡처 이미지 표시 스타일 */
+.recent-capture-item {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    animation: slideInFromRight 0.5s ease-out;
+}
+
+.recent-capture-item:hover {
+    transform: translateX(2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.recent-capture-item img {
+    width: 60px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 2px solid rgba(220, 53, 69, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.recent-capture-item img:hover {
+    border-color: rgba(220, 53, 69, 0.6);
+    transform: scale(1.05);
+}
+
+.recent-capture-info {
+    flex: 1;
+    margin-left: 10px;
+    overflow: hidden;
+}
+
+.recent-capture-info .capture-time {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.recent-capture-info .capture-id {
+    font-size: 0.7rem;
+    color: #adb5bd;
+    margin: 0;
+    font-family: monospace;
+}
+
+.recent-capture-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.recent-capture-actions .btn {
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    line-height: 1;
+    min-width: auto;
+}
+
+/* 캡처 추가 애니메이션 */
+@keyframes slideInFromRight {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 빈 캡처 상태 메시지 */
+.empty-captures-message {
+    text-align: center;
+    color: #6c757d;
+    font-size: 0.8rem;
+    padding: 1rem;
+    background: rgba(248, 249, 250, 0.8);
+    border-radius: 6px;
+    border: 1px dashed #dee2e6;
+}
+
+.empty-captures-message i {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #adb5bd;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+    .recent-capture-item {
+        padding: 6px;
+    }
+    
+    .recent-capture-item img {
+        width: 50px;
+        height: 35px;
+    }
+    
+    .recent-capture-info {
+        margin-left: 8px;
+    }
+    
+    .recent-capture-info .capture-time {
+        font-size: 0.7rem;
+    }
+    
+    .recent-capture-info .capture-id {
+        font-size: 0.65rem;
+    }
+    
+    .recent-capture-actions .btn {
+        padding: 1px 4px;
+        font-size: 0.65rem;
+    }
+}
