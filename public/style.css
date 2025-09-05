@@ -401,3 +401,57 @@ body {
     border: 2px solid #dc3545;
     background-color: rgba(220, 53, 69, 0.1);
 }
+
+/* 캡처 버튼 스타일 */
+.capture-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+#captureBtn {
+    width: 60px;
+    height: 60px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+#captureBtn:hover {
+    transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+    background: linear-gradient(135deg, #e74c3c 0%, #dc3545 100%);
+}
+
+#captureBtn:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#captureBtn i {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* 플레이어 래퍼 스타일 */
+.player-wrapper {
+    position: relative;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+/* 모바일 반응형 캡처 버튼 */
+@media (max-width: 768px) {
+    #captureBtn {
+        width: 50px;
+        height: 50px;
+    }
+    
+    #captureBtn i {
+        font-size: 1.5rem;
+    }
+    
+    .capture-controls {
+        margin: 0.75rem !important;
+    }
+}

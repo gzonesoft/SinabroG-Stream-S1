@@ -238,6 +238,11 @@ app.get('/simple', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'simple.html'));
 });
 
+// 카메라 갤러리 페이지
+app.get('/camera', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'camera.html'));
+});
+
 // 스트림 테스트 페이지
 app.get('/test', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'test.html'));

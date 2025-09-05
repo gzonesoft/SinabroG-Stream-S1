@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카메라 캡처 갤러리 - GZONESOFT</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0;
+            text-align: center;
+        }
+        .capture-gallery {
+            padding: 2rem 0;
+        }
+        .capture-item {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            margin-bottom: 2rem;
+        }
+        .capture-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+        }
+        .capture-preview {
+            position: relative;
+            overflow: hidden;
+            border-radius: 0.375rem;
+        }
+        .capture-preview img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        .capture-preview:hover img {
+            transform: scale(1.05);
+        }
+        .capture-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            display: flex;
+            align-items: end;
+            padding: 1rem;
+        }
+        .capture-preview:hover .capture-overlay {
+            opacity: 1;
+        }
+        .capture-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .empty-gallery {
+            text-align: center;
+            padding: 4rem 0;
+            color: #6c757d;
+        }
+        .stream-controls {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            background: #dc3545;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.875rem;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+        .live-indicator .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="container">
+            <h1 class="display-4 mb-4">
+                <i class="fas fa-camera me-3"></i>
+                카메라 캡처 갤러리
+            </h1>
+            <p class="lead mb-4">실시간 스트림에서 캡처한 사진들을 관리하세요</p>
+        </div>
+    </div>
+
+    <div class="container capture-gallery">
+        <!-- 스트림 제어 패널 -->
+        <div class="stream-controls">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-3 mb-md-0">
+                        <div class="live-indicator me-3">
+                            <div class="pulse-dot"></div>
+                            LIVE
+                        </div>
+                        <div>
+                            <h5 class="mb-0" id="currentStreamTitle">스트림: <span id="streamKeyDisplay">-</span></h5>
+                            <small class="text-muted">실시간 스트리밍 중</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex gap-2 justify-content-md-end">
+                        <button class="btn btn-primary" onclick="goBackToWatch()">
+                            <i class="fas fa-video me-2"></i>스트림으로 돌아가기
+                        </button>
+                        <button class="btn btn-success" onclick="captureFromStream()" id="captureFromStreamBtn" disabled>
+                            <i class="fas fa-camera me-2"></i>캡처하기
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="clearAllCaptures()">
+                            <i class="fas fa-trash me-2"></i>전체 삭제
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 캡처 갤러리 -->
+        <div class="row" id="captureGallery">
+            <!-- 캡처된 이미지들이 여기에 표시됩니다 -->
+        </div>
+
+        <!-- 빈 갤러리 메시지 -->
+        <div id="emptyGallery" class="empty-gallery">
+            <i class="fas fa-camera fa-4x mb-3"></i>
+            <h4>아직 캡처된 사진이 없습니다</h4>
+            <p>스트림에서 마음에 드는 순간을 캡처해보세요!</p>
+            <button class="btn btn-primary" onclick="goBackToWatch()">
+                <i class="fas fa-video me-2"></i>스트림으로 이동
+            </button>
+        </div>
+    </div>
+
+    <!-- 이미지 상세 보기 모달 -->
+    <div class="modal fade" id="imageDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-image me-2"></i>
+                        캡처 이미지 상세
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="modalImage" src="" alt="캡처 이미지" class="img-fluid">
+                    <div class="mt-3" id="imageInfo">
+                        <!-- 이미지 정보가 여기에 표시됩니다 -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" onclick="downloadCurrentImage()">
+                        <i class="fas fa-download me-2"></i>다운로드
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="deleteCurrentImage()">
+                        <i class="fas fa-trash me-2"></i>삭제
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 푸터 -->
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-0">
+                <i class="fas fa-camera me-2"></i>
+                GZONESOFT 카메라 갤러리 |
+                <a href="https://ai.gzonesoft.com:17937" class="text-light">관리자 페이지</a>
+            </p>
+            <small class="text-muted">실시간 캡처 · 고화질 · 간편 관리</small>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        class CameraGallery {
+            constructor() {
+                this.captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+                this.currentStreamKey = null;
+                this.currentImageId = null;
+                this.init();
+            }
+
+            init() {
+                // URL에서 스트림 키 가져오기
+                const urlParams = new URLSearchParams(window.location.search);
+                this.currentStreamKey = urlParams.get('key');
+                
+                if (this.currentStreamKey) {
+                    document.getElementById('streamKeyDisplay').textContent = this.currentStreamKey;
+                    document.getElementById('captureFromStreamBtn').disabled = false;
+                }
+
+                this.renderGallery();
+                this.loadStreamStatus();
+            }
+
+            async loadStreamStatus() {
+                try {
+                    const response = await fetch('/api/streams');
+                    const streams = await response.json();
+                    
+                    const activeStream = streams.find(s => s.streamKey === this.currentStreamKey);
+                    if (activeStream) {
+                        document.querySelector('.live-indicator').style.display = 'inline-flex';
+                    } else {
+                        document.querySelector('.live-indicator').style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('스트림 상태 로드 실패:', error);
+                }
+            }
+
+            renderGallery() {
+                const gallery = document.getElementById('captureGallery');
+                const emptyMessage = document.getElementById('emptyGallery');
+
+                if (this.captures.length === 0) {
+                    gallery.innerHTML = '';
+                    emptyMessage.style.display = 'block';
+                    return;
+                }
+
+                emptyMessage.style.display = 'none';
+                
+                gallery.innerHTML = this.captures.map((capture, index) => `
+                    <div class="col-md-4 col-lg-3">
+                        <div class="card capture-item">
+                            <div class="capture-preview" onclick="showImageDetail('${capture.id}')">
+                                <img src="${capture.dataUrl}" alt="캡처 ${index + 1}">
+                                <div class="capture-overlay">
+                                    <div class="text-white">
+                                        <small><i class="fas fa-clock me-1"></i>${new Date(capture.timestamp).toLocaleString()}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <h6 class="card-title mb-2">
+                                    <i class="fas fa-camera me-1"></i>
+                                    캡처 #${index + 1}
+                                </h6>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <i class="fas fa-key me-1"></i>스트림: ${capture.streamKey}<br>
+                                        <i class="fas fa-clock me-1"></i>${new Date(capture.timestamp).toLocaleString()}
+                                    </small>
+                                </p>
+                                <div class="capture-actions">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="downloadCapture('${capture.id}')">
+                                        <i class="fas fa-download"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info" onclick="showImageDetail('${capture.id}')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteCapture('${capture.id}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            async captureFromStream() {
+                // 이 기능은 원래 페이지에서 캡처를 수행하고 여기로 데이터를 전달받아야 합니다
+                // 임시로 alert를 표시하고, 실제로는 스트림 페이지로 리다이렉트
+                alert('스트림 페이지에서 촬영 버튼을 사용해주세요.');
+                this.goBackToWatch();
+            }
+
+            addCapture(captureData) {
+                this.captures.unshift(captureData);
+                this.saveCaptures();
+                this.renderGallery();
+                this.showAlert('화면이 성공적으로 캡처되었습니다!', 'success');
+            }
+
+            deleteCapture(captureId) {
+                if (confirm('이 캡처를 삭제하시겠습니까?')) {
+                    this.captures = this.captures.filter(c => c.id !== captureId);
+                    this.saveCaptures();
+                    this.renderGallery();
+                    this.showAlert('캡처가 삭제되었습니다.', 'info');
+                }
+            }
+
+            clearAllCaptures() {
+                if (confirm('모든 캡처를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                    this.captures = [];
+                    this.saveCaptures();
+                    this.renderGallery();
+                    this.showAlert('모든 캡처가 삭제되었습니다.', 'info');
+                }
+            }
+
+            downloadCapture(captureId) {
+                const capture = this.captures.find(c => c.id === captureId);
+                if (!capture) return;
+
+                const link = document.createElement('a');
+                link.download = `stream-capture-${capture.streamKey}-${new Date(capture.timestamp).toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+                link.href = capture.dataUrl;
+                link.click();
+            }
+
+            showImageDetail(captureId) {
+                const capture = this.captures.find(c => c.id === captureId);
+                if (!capture) return;
+
+                this.currentImageId = captureId;
+                
+                document.getElementById('modalImage').src = capture.dataUrl;
+                document.getElementById('imageInfo').innerHTML = `
+                    <div class="row text-start">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-info-circle me-2"></i>캡처 정보</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>스트림 키:</strong> ${capture.streamKey}</li>
+                                <li><strong>캡처 시간:</strong> ${new Date(capture.timestamp).toLocaleString()}</li>
+                                <li><strong>해상도:</strong> ${capture.width || '알 수 없음'} × ${capture.height || '알 수 없음'}</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-chart-bar me-2"></i>파일 정보</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>파일 크기:</strong> ${this.formatFileSize(capture.dataUrl.length * 0.75)}</li>
+                                <li><strong>형식:</strong> PNG</li>
+                                <li><strong>ID:</strong> ${capture.id.substring(0, 8)}...</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+
+                const modal = new bootstrap.Modal(document.getElementById('imageDetailModal'));
+                modal.show();
+            }
+
+            downloadCurrentImage() {
+                if (this.currentImageId) {
+                    this.downloadCapture(this.currentImageId);
+                }
+            }
+
+            deleteCurrentImage() {
+                if (this.currentImageId) {
+                    this.deleteCapture(this.currentImageId);
+                    bootstrap.Modal.getInstance(document.getElementById('imageDetailModal')).hide();
+                }
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            goBackToWatch() {
+                const streamKey = this.currentStreamKey;
+                if (streamKey) {
+                    window.location.href = `watch.html?key=${streamKey}`;
+                } else {
+                    window.location.href = 'watch.html';
+                }
+            }
+
+            saveCaptures() {
+                localStorage.setItem('streamCaptures', JSON.stringify(this.captures));
+            }
+
+            showAlert(message, type) {
+                // 기존 알림 제거
+                const existingAlert = document.querySelector('.floating-alert');
+                if (existingAlert) {
+                    existingAlert.remove();
+                }
+                
+                // 새 알림 생성
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} floating-alert`;
+                alertDiv.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 9999;
+                    max-width: 400px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                `;
+                
+                alertDiv.innerHTML = `
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+                `;
+                
+                document.body.appendChild(alertDiv);
+                
+                // 3초 후 자동 제거
+                setTimeout(() => {
+                    if (alertDiv.parentElement) {
+                        alertDiv.remove();
+                    }
+                }, 3000);
+            }
+        }
+
+        // 전역 인스턴스
+        let cameraGallery;
+
+        // 페이지 로드시 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            cameraGallery = new CameraGallery();
+        });
+
+        // 전역 함수들
+        function goBackToWatch() {
+            cameraGallery.goBackToWatch();
+        }
+
+        function captureFromStream() {
+            cameraGallery.captureFromStream();
+        }
+
+        function clearAllCaptures() {
+            cameraGallery.clearAllCaptures();
+        }
+
+        function downloadCapture(id) {
+            cameraGallery.downloadCapture(id);
+        }
+
+        function deleteCapture(id) {
+            cameraGallery.deleteCapture(id);
+        }
+
+        function showImageDetail(id) {
+            cameraGallery.showImageDetail(id);
+        }
+
+        function downloadCurrentImage() {
+            cameraGallery.downloadCurrentImage();
+        }
+
+        function deleteCurrentImage() {
+            cameraGallery.deleteCurrentImage();
+        }
+
+        // 외부에서 캡처 데이터를 추가할 수 있는 함수 (watch.html에서 호출용)
+        window.addCaptureToGallery = function(captureData) {
+            if (cameraGallery) {
+                cameraGallery.addCapture(captureData);
+            }
+        };
+    </script>
+</body>
+</html>

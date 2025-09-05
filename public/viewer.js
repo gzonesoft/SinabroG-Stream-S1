@@ -136,6 +136,7 @@ class StreamViewer {
                 this.startOverlayUpdate(videoContainer);
                 this.startDataOverlayUpdate(videoContainer);
                 this.showAlert('FLV 스트림이 시작되었습니다!', 'success');
+                this.showCaptureButton();
             });
             
             flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
@@ -192,6 +193,7 @@ class StreamViewer {
             this.startOverlayUpdate(videoContainer);
             this.startDataOverlayUpdate(videoContainer);
             this.showAlert('네이티브 FLV 스트림이 시작되었습니다!', 'success');
+            this.showCaptureButton();
         });
         
         video.addEventListener('error', (e) => {
@@ -597,6 +599,101 @@ class StreamViewer {
             serviceOverlay.textContent = this.serviceName;
         }
     }
+
+    // 캡처 버튼 표시/숨김
+    showCaptureButton() {
+        const captureBtn = document.getElementById('captureBtn');
+        if (captureBtn) {
+            captureBtn.style.display = 'block';
+        }
+    }
+
+    hideCaptureButton() {
+        const captureBtn = document.getElementById('captureBtn');
+        if (captureBtn) {
+            captureBtn.style.display = 'none';
+        }
+    }
+
+    // 화면 캡처 기능
+    async captureVideoFrame() {
+        try {
+            // 비디오 컨테이너 찾기
+            const videoContainer = document.querySelector('.video-container');
+            if (!videoContainer) {
+                throw new Error('비디오 컨테이너를 찾을 수 없습니다.');
+            }
+
+            console.log('📸 화면 캡처 시작...');
+            
+            // html2canvas를 사용하여 오버레이와 함께 캡처
+            const canvas = await html2canvas(videoContainer, {
+                allowTaint: true,
+                useCORS: true,
+                backgroundColor: '#000000',
+                width: videoContainer.offsetWidth,
+                height: videoContainer.offsetHeight,
+                scale: 1,
+                logging: false
+            });
+
+            // 캔버스를 이미지 데이터로 변환
+            const dataUrl = canvas.toDataURL('image/png', 0.9);
+            
+            // 캡처 데이터 생성
+            const captureData = {
+                id: this.generateCaptureId(),
+                dataUrl: dataUrl,
+                timestamp: new Date().toISOString(),
+                streamKey: this.currentStreamKey || 'unknown',
+                width: canvas.width,
+                height: canvas.height
+            };
+
+            // localStorage에 저장
+            this.saveCaptureToStorage(captureData);
+
+            // 사용자에게 알림
+            this.showAlert('화면이 성공적으로 캡처되었습니다!', 'success');
+
+            // 카메라 페이지로 이동할지 물어보기
+            const goToGallery = confirm('캡처가 완료되었습니다. 갤러리 페이지로 이동하시겠습니까?');
+            if (goToGallery) {
+                window.open(`camera.html?key=${this.currentStreamKey}`, '_blank');
+            }
+
+            return captureData;
+
+        } catch (error) {
+            console.error('캡처 실패:', error);
+            this.showAlert('화면 캡처에 실패했습니다: ' + error.message, 'error');
+            throw error;
+        }
+    }
+
+    // 캡처 ID 생성
+    generateCaptureId() {
+        return 'capture_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // 캡처 데이터를 localStorage에 저장
+    saveCaptureToStorage(captureData) {
+        try {
+            let captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+            captures.unshift(captureData); // 최신 캡처를 맨 앞에 추가
+            
+            // 최대 50개까지만 저장 (용량 관리)
+            if (captures.length > 50) {
+                captures = captures.slice(0, 50);
+            }
+            
+            localStorage.setItem('streamCaptures', JSON.stringify(captures));
+            console.log('✅ 캡처 데이터 저장 완료:', captureData.id);
+        } catch (error) {
+            console.error('캡처 데이터 저장 실패:', error);
+            throw new Error('저장 공간 부족 또는 저장 오류');
+        }
+    }
     
     retryStream() {
         if (this.currentStreamKey) {
@@ -780,5 +877,19 @@ function setServiceName() {
     if (name !== null) {
         streamViewer.setServiceName(name);
         streamViewer.showAlert('서비스 이름이 변경되었습니다!', 'success');
+    }
+}
+
+// 화면 캡처 함수 (전역)
+async function captureFrame() {
+    if (!streamViewer) {
+        alert('스트림 뷰어가 초기화되지 않았습니다.');
+        return;
+    }
+
+    try {
+        await streamViewer.captureVideoFrame();
+    } catch (error) {
+        console.error('캡처 실행 실패:', error);
     }
 }
