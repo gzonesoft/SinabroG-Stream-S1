@@ -8,7 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const dataPath = path.join(__dirname, 'data_overly.json');
+const dataPath = path.join(__dirname, 'data_overly_refresh.json');
 
 // 기본 위치 (서울 시청 근처)
 const baseLocation = {

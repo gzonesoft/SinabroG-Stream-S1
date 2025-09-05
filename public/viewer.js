@@ -6,7 +6,7 @@ class StreamViewer {
         this.hls = null;
         this.timeUpdateInterval = null;
         this.dataOverlayInterval = null;
-        this.serviceName = 'GZONESOFT LIVE';
+        this.serviceName = 'AHSYSTEM Live';
         this.lastDataHash = null;
         this.debugMode = false;
         this.init();
@@ -589,7 +589,7 @@ class StreamViewer {
     
     // 서비스 이름 설정
     setServiceName(name) {
-        this.serviceName = name || 'GZONESOFT LIVE';
+        this.serviceName = name || 'AHSYSTEM Live';
         
         // 현재 표시 중인 오버레이도 업데이트
         const serviceOverlay = document.querySelector('.overlay-service-name');

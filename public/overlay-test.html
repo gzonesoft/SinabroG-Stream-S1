@@ -65,7 +65,7 @@
                             
                             <!-- 서비스 이름 오버레이 -->
                             <div class="video-overlay overlay-service-name overlay-fade-in" id="serviceNameOverlay">
-                                GZONESOFT LIVE
+                                AHSYSTEM Live
                             </div>
                             
                             <!-- 시간 오버레이 -->
@@ -127,7 +127,7 @@
                         </label>
                         <div class="input-group">
                             <input type="text" class="form-control" id="serviceNameInput" 
-                                   value="GZONESOFT LIVE" placeholder="서비스 이름">
+                                   value="AHSYSTEM Live" placeholder="서비스 이름">
                             <button class="btn btn-outline-primary" onclick="updateServiceName()">
                                 <i class="fas fa-check"></i>
                             </button>
@@ -287,7 +287,7 @@
         
         // 서비스명 업데이트
         function updateServiceName() {
-            const serviceName = document.getElementById('serviceNameInput').value || 'GZONESOFT LIVE';
+            const serviceName = document.getElementById('serviceNameInput').value || 'AHSYSTEM Live';
             document.getElementById('serviceNameOverlay').textContent = serviceName;
             showToast('서비스명이 업데이트되었습니다!', 'success');
         }
