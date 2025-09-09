@@ -1674,6 +1674,40 @@ class StreamViewer {
         }
     }
     
+    // 로컬스토리지에 캡처 데이터 저장
+    async saveCaptureToStorage(captureData) {
+        try {
+            console.log('💾 로컬스토리지에 캡처 데이터 저장 시작...');
+            
+            // 기존 캡처 목록 로드
+            let captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+            
+            // 새 캡처 데이터 추가
+            captures.unshift(captureData); // 최신 데이터를 맨 앞에 추가
+            
+            // 최대 100개까지만 저장 (용량 관리)
+            if (captures.length > 100) {
+                captures = captures.slice(0, 100);
+                console.log('📦 캡처 목록이 100개를 초과하여 오래된 데이터를 제거했습니다.');
+            }
+            
+            // 로컬스토리지에 저장
+            localStorage.setItem('streamCaptures', JSON.stringify(captures));
+            
+            console.log(`✅ 로컬스토리지 저장 완료: ID ${captureData.id}`);
+            console.log(`📊 현재 저장된 캡처 수: ${captures.length}개`);
+            
+            // 캡처 개수 업데이트
+            this.updateCaptureCount();
+            
+            return captureData;
+            
+        } catch (error) {
+            console.error('❌ 로컬스토리지 저장 실패:', error);
+            throw new Error(`로컬 저장 실패: ${error.message}`);
+        }
+    }
+    
     retryStream() {
         if (this.currentStreamKey) {
             this.loadStream(this.currentStreamKey);

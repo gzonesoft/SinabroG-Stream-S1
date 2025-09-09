@@ -324,20 +324,39 @@ app.post('/api/capture/save', (req, res) => {
       return res.status(400).json({ error: 'Invalid image data' });
     }
     
+    // 이미지 타입 감지 및 확장자 결정
+    let fileExtension = '.png';
+    let base64Prefix = 'data:image/png;base64,';
+    
+    if (imageData.startsWith('data:image/jpeg')) {
+      fileExtension = '.jpg';
+      base64Prefix = 'data:image/jpeg;base64,';
+    } else if (imageData.startsWith('data:image/png')) {
+      fileExtension = '.png';
+      base64Prefix = 'data:image/png;base64,';
+    }
+    
     // 파일명 생성
     const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
     const streamKey = metadata.streamKey || 'unknown';
-    const filename = `capture_${streamKey}_${timestamp}.png`;
+    const filename = `capture_${streamKey}_${timestamp}${fileExtension}`;
     const filepath = path.join('/Users/gzonesoft/api_files/stream/capture', filename);
     
+    // 디렉토리가 존재하지 않으면 생성
+    const captureDir = path.dirname(filepath);
+    if (!fs.existsSync(captureDir)) {
+      fs.mkdirSync(captureDir, { recursive: true });
+      console.log(`📁 캡처 저장 디렉토리 생성: ${captureDir}`);
+    }
+    
     // Base64 데이터에서 이미지 데이터 추출
-    const base64Data = imageData.replace(/^data:image\/png;base64,/, '');
+    const base64Data = imageData.replace(base64Prefix, '');
     
     // 파일 저장
     fs.writeFileSync(filepath, base64Data, 'base64');
     
     // 메타데이터 파일 저장
-    const metadataFilename = filename.replace('.png', '_metadata.json');
+    const metadataFilename = filename.replace(fileExtension, '_metadata.json');
     const metadataFilepath = path.join('/Users/gzonesoft/api_files/stream/capture', metadataFilename);
     
     const fullMetadata = {
