@@ -1474,113 +1474,198 @@ class StreamViewer {
         return overlayData;
     }
 
-    // Canvas에 오버레이 직접 그리기
+    // Canvas에 오버레이 직접 그리기 (실제 화면 스타일과 완전히 일치)
     drawOverlaysOnCanvas(ctx, canvasWidth, canvasHeight, scale, overlayData) {
-        // Canvas 설정
+        // Canvas 기본 설정
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         
-        // 기본 폰트 설정
-        const baseFontSize = Math.max(16 * scale, 24);
-        const largeFontSize = Math.max(20 * scale, 30);
-        const smallFontSize = Math.max(12 * scale, 18);
+        // 스케일에 따른 폰트 크기와 마진 계산
+        const serviceNameFontSize = 1.5 * 16 * scale; // 1.5rem
+        const timeFontSize = 1.2 * 16 * scale;        // 1.2rem  
+        const dateFontSize = 0.9 * 16 * scale;        // 0.9rem
+        const dataFontSize = 1.0 * 16 * scale;        // 1.0rem
+        const dataLabelFontSize = 0.9 * 16 * scale;   // 0.9rem
+        const dataValueFontSize = 0.95 * 16 * scale;  // 0.95rem
         
-        // 1. 좌상단 서비스명 오버레이 그리기
+        const padding = 20 * scale;
+        const boxPadding = 8 * scale;
+        const borderRadius = 8 * scale;
+        const borderWidth = 2 * scale;
+
+        // 1. 좌상단 서비스명 오버레이 (background 없이 text-shadow만)
         if (overlayData.serviceName) {
-            // 반투명 검은 배경
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(20 * scale, 20 * scale, 300 * scale, 50 * scale);
-            
-            // 서비스명 텍스트
-            ctx.font = `bold ${largeFontSize}px 'Noto Sans', sans-serif`;
+            ctx.font = `bold ${serviceNameFontSize}px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif`;
             ctx.fillStyle = '#ffffff';
-            ctx.fillText(overlayData.serviceName, 30 * scale, 35 * scale);
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            
+            ctx.fillText(overlayData.serviceName, padding, padding);
+            
+            // 그림자 리셋
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
         }
 
-        // 2. 우하단 시간/날짜 오버레이 그리기
+        // 2. 우하단 시간/날짜 오버레이 (rounded rectangle background)
         if (overlayData.currentTime || overlayData.currentDate) {
-            const rightX = canvasWidth - 20 * scale;
-            const bottomY = canvasHeight - 80 * scale;
+            // 텍스트 크기 측정
+            ctx.font = `600 ${timeFontSize}px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif`;
+            const timeWidth = ctx.measureText(overlayData.currentTime || '').width;
             
-            // 배경 크기 계산
-            const bgWidth = 250 * scale;
-            const bgHeight = 60 * scale;
+            ctx.font = `normal ${dateFontSize}px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif`;
+            const dateWidth = ctx.measureText(overlayData.currentDate || '').width;
             
-            // 반투명 검은 배경
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(rightX - bgWidth, bottomY, bgWidth, bgHeight);
+            const maxWidth = Math.max(timeWidth, dateWidth);
+            const boxWidth = maxWidth + (boxPadding * 2);
+            const boxHeight = (timeFontSize + dateFontSize + 6) + (boxPadding * 2); // 6px 여백
             
-            // 시간 텍스트 (큰 글씨)
+            const rightX = canvasWidth - padding;
+            const bottomY = canvasHeight - padding - boxHeight;
+            
+            // 배경 그리기 (둥근 모서리 + 테두리 + 블러 효과)
+            this.drawRoundedRect(ctx, rightX - boxWidth, bottomY, boxWidth, boxHeight, borderRadius, {
+                fillStyle: 'rgba(0, 0, 0, 0.6)',
+                strokeStyle: 'rgba(255, 255, 255, 0.3)',
+                lineWidth: borderWidth
+            });
+            
+            // 시간 텍스트
             if (overlayData.currentTime) {
-                ctx.font = `bold ${largeFontSize}px 'Noto Sans', monospace`;
+                ctx.font = `600 ${timeFontSize}px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif`;
                 ctx.fillStyle = '#ffffff';
                 ctx.textAlign = 'right';
-                ctx.fillText(overlayData.currentTime, rightX - 15 * scale, bottomY + 10 * scale);
+                ctx.fillText(overlayData.currentTime, rightX - boxPadding, bottomY + boxPadding);
             }
             
-            // 날짜 텍스트 (작은 글씨)
+            // 날짜 텍스트
             if (overlayData.currentDate) {
-                ctx.font = `${smallFontSize}px 'Noto Sans', sans-serif`;
-                ctx.fillStyle = '#cccccc';
+                ctx.font = `normal ${dateFontSize}px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif`;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
                 ctx.textAlign = 'right';
-                ctx.fillText(overlayData.currentDate, rightX - 15 * scale, bottomY + 35 * scale);
+                ctx.fillText(overlayData.currentDate, rightX - boxPadding, bottomY + boxPadding + timeFontSize + 2);
             }
         }
 
-        // 3. 좌하단 센서 데이터 오버레이 그리기
+        // 3. 좌하단 센서 데이터 오버레이 (시간 오버레이와 동일한 스타일)
         if (overlayData.sensorData && Object.keys(overlayData.sensorData).length > 0) {
-            const leftX = 20 * scale;
-            const bottomY = canvasHeight - 200 * scale;
-            
-            // 배경 크기 계산
-            const bgWidth = 280 * scale;
-            const bgHeight = 180 * scale;
-            
-            // 반투명 검은 배경
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(leftX, bottomY, bgWidth, bgHeight);
-            
-            // 센서 데이터 제목
-            ctx.font = `bold ${baseFontSize}px 'Noto Sans', sans-serif`;
-            ctx.fillStyle = '#ffffff';
-            ctx.textAlign = 'left';
-            ctx.fillText('드론 텔레메트리', leftX + 15 * scale, bottomY + 15 * scale);
-            
-            // 센서 데이터 표시
+            // 센서 라벨 정의
             const sensorLabels = {
-                'LATITUDE': '위도',
-                'LONGITUDE': '경도', 
-                'ALTITUDE': '고도',
-                'SPEED': '속도',
-                'AZIMUTH': '방향각',
-                'TILT': '틸트',
-                'ROLL': '롤'
+                'LATITUDE': '위도:',
+                'LONGITUDE': '경도:',
+                'ALTITUDE': '고도:',
+                'SPEED': '속도:',
+                'AZIMUTH': '방향:',
+                'TILT': '틸트:',
+                'ROLL': '롤:'
             };
             
-            let yOffset = 40 * scale;
-            const lineHeight = 18 * scale;
+            // 표시할 데이터 필터링 (값이 있는 것만)
+            const activeData = Object.entries(overlayData.sensorData)
+                .filter(([key, value]) => value && value !== '--')
+                .slice(0, 7); // 최대 7개까지만 표시
             
-            Object.entries(overlayData.sensorData).forEach(([key, value]) => {
-                const label = sensorLabels[key] || key;
+            if (activeData.length > 0) {
+                // 텍스트 크기 측정을 위한 임시 설정
+                ctx.font = `500 ${dataLabelFontSize}px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif`;
+                const labelWidth = 60 * scale; // CSS와 동일
                 
-                // 레이블
-                ctx.font = `${smallFontSize}px 'Noto Sans', sans-serif`;
-                ctx.fillStyle = '#cccccc';
-                ctx.fillText(`${label}:`, leftX + 15 * scale, bottomY + yOffset);
+                ctx.font = `600 ${dataValueFontSize}px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif`;
+                const maxValueWidth = Math.max(...activeData.map(([key, value]) => 
+                    ctx.measureText(String(value)).width
+                ));
                 
-                // 값
-                ctx.fillStyle = value === '--' ? '#999999' : '#ffffff';
-                ctx.fillText(value, leftX + 100 * scale, bottomY + yOffset);
+                const lineHeight = Math.max(dataLabelFontSize, dataValueFontSize) * 1.3; // line-height: 1.3
+                const boxWidth = Math.min(labelWidth + maxValueWidth + (boxPadding * 3), 280 * scale);
+                const boxHeight = (activeData.length * lineHeight) + (boxPadding * 2);
                 
-                yOffset += lineHeight;
-            });
+                const leftX = padding;
+                const bottomY = canvasHeight - padding - boxHeight;
+                
+                // 배경 그리기 (시간 오버레이와 동일한 스타일)
+                this.drawRoundedRect(ctx, leftX, bottomY, boxWidth, boxHeight, borderRadius, {
+                    fillStyle: 'rgba(0, 0, 0, 0.6)',
+                    strokeStyle: 'rgba(255, 255, 255, 0.3)',
+                    lineWidth: borderWidth
+                });
+                
+                // 데이터 표시
+                let yOffset = boxPadding;
+                activeData.forEach(([key, value]) => {
+                    const label = sensorLabels[key] || `${key}:`;
+                    
+                    // 레이블 (오른쪽 정렬)
+                    ctx.font = `500 ${dataLabelFontSize}px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif`;
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.textAlign = 'right';
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                    ctx.shadowBlur = 2;
+                    ctx.shadowOffsetX = 1;
+                    ctx.shadowOffsetY = 1;
+                    
+                    ctx.fillText(label, leftX + labelWidth, bottomY + yOffset);
+                    
+                    // 값 (왼쪽 정렬)
+                    ctx.font = `600 ${dataValueFontSize}px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif`;
+                    
+                    // GPS 좌표는 노란색으로 강조 (CSS 스타일과 일치)
+                    if (key === 'LATITUDE' || key === 'LONGITUDE') {
+                        ctx.fillStyle = '#ffc107';
+                    } else {
+                        ctx.fillStyle = '#ffffff';
+                    }
+                    
+                    ctx.textAlign = 'left';
+                    ctx.fillText(String(value), leftX + labelWidth + (8 * scale), bottomY + yOffset);
+                    
+                    yOffset += lineHeight;
+                });
+                
+                // 그림자 리셋
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+            }
         }
 
         // 텍스트 설정 초기화
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         
-        console.log('✅ Canvas에 오버레이 그리기 완료');
+        console.log('✅ Canvas에 실제 화면 스타일과 일치하는 오버레이 렌더링 완료');
+    }
+
+    // 둥근 모서리 사각형 그리기 헬퍼 함수
+    drawRoundedRect(ctx, x, y, width, height, radius, styles = {}) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        
+        // 배경 채우기
+        if (styles.fillStyle) {
+            ctx.fillStyle = styles.fillStyle;
+            ctx.fill();
+        }
+        
+        // 테두리 그리기
+        if (styles.strokeStyle) {
+            ctx.strokeStyle = styles.strokeStyle;
+            ctx.lineWidth = styles.lineWidth || 1;
+            ctx.stroke();
+        }
     }
 
     // 오버레이 데이터 수집 (사용자가 보는 모든 화면 정보)
