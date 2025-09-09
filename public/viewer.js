@@ -744,39 +744,94 @@ class StreamViewer {
         }
     }
 
-    // 캡처 개수 업데이트
-    updateCaptureCount() {
-        const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
-        const count = captures.length;
-        
-        // 갤러리 뱃지 업데이트
-        const galleryBadge = document.getElementById('galleryBadge');
-        if (galleryBadge) {
-            if (count > 0) {
-                galleryBadge.textContent = count;
-                galleryBadge.style.display = 'inline';
-            } else {
-                galleryBadge.style.display = 'none';
+    // 캡처 개수 업데이트 (서버와 로컬 혼용)
+    async updateCaptureCount() {
+        try {
+            // 서버에서 캡처 목록 조회 시도
+            const serverCount = await this.getServerCaptureCount();
+            const localCaptures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+            
+            // 서버 우선, fallback으로 로컬 사용
+            const count = serverCount !== null ? serverCount : localCaptures.length;
+            
+            console.log(`📊 캡처 개수 업데이트: 서버 ${serverCount}, 로컬 ${localCaptures.length}, 사용 ${count}`);
+            
+            // 갤러리 뱃지 업데이트
+            const galleryBadge = document.getElementById('galleryBadge');
+            if (galleryBadge) {
+                if (count > 0) {
+                    galleryBadge.textContent = count;
+                    galleryBadge.style.display = 'inline';
+                } else {
+                    galleryBadge.style.display = 'none';
+                }
+            }
+            
+            // 기존 갤러리 버튼들도 업데이트 (호환성)
+            const galleryButtons = document.querySelectorAll('[onclick*="openCaptureGallery"]');
+            galleryButtons.forEach(btn => {
+                // 기존 뱃지 제거
+                const existingBadge = btn.querySelector('.badge');
+                if (existingBadge && !existingBadge.id) {
+                    existingBadge.remove();
+                }
+                
+                // 새 뱃지 추가 (갤러리 버튼이 별도가 아닌 경우)
+                if (count > 0 && !btn.querySelector('#galleryBadge')) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-success ms-1';
+                    badge.textContent = count;
+                    btn.appendChild(badge);
+                }
+            });
+            
+        } catch (error) {
+            console.error('❌ 캡처 개수 업데이트 실패:', error);
+            
+            // 에러시 로컬스토리지만 사용
+            const localCaptures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+            const count = localCaptures.length;
+            
+            const galleryBadge = document.getElementById('galleryBadge');
+            if (galleryBadge) {
+                if (count > 0) {
+                    galleryBadge.textContent = count;
+                    galleryBadge.style.display = 'inline';
+                } else {
+                    galleryBadge.style.display = 'none';
+                }
             }
         }
         
-        // 기존 갤러리 버튼들도 업데이트 (호환성)
-        const galleryButtons = document.querySelectorAll('[onclick*="openCaptureGallery"]');
-        galleryButtons.forEach(btn => {
-            // 기존 뱃지 제거
-            const existingBadge = btn.querySelector('.badge');
-            if (existingBadge && !existingBadge.id) {
-                existingBadge.remove();
+        // 실시간 캡처 목록 업데이트
+        this.updateRecentCaptures();
+    }
+
+    // 서버 캡처 개수 조회
+    async getServerCaptureCount() {
+        try {
+            const protocol = window.location.protocol;
+            const hostname = window.location.hostname;
+            const port = protocol === 'https:' ? '17937' : '17936';
+            const apiUrl = `${protocol}//${hostname}:${port}/api/capture/list`;
+            
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                cache: 'no-cache'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`서버 응답 오류: ${response.status}`);
             }
             
-            // 새 뱃지 추가 (갤러리 버튼이 별도가 아닌 경우)
-            if (count > 0 && !btn.querySelector('#galleryBadge')) {
-                const badge = document.createElement('span');
-                badge.className = 'badge bg-success ms-1';
-                badge.textContent = count;
-                btn.appendChild(badge);
-            }
-        });
+            const data = await response.json();
+            return data.captures ? data.captures.length : 0;
+            
+        } catch (error) {
+            console.warn('⚠️ 서버 캡처 개수 조회 실패:', error);
+            return null; // null 반환으로 로컬 데이터 사용 지시
+        }
+    }
         
         // 실시간 캡처 목록 업데이트
         this.updateRecentCaptures();
@@ -1355,8 +1410,8 @@ class StreamViewer {
                 captureMethod: 'canvas_composite'
             };
 
-            // localStorage에 저장
-            this.saveCaptureToStorage(captureData);
+            // 서버에 저장
+            await this.saveCaptureToServer(captureData);
 
             // 성공 알림
             this.showAlert('비디오 + 오버레이 완전 캡처 성공!', 'success');
@@ -1512,26 +1567,67 @@ class StreamViewer {
         return 'capture_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 
-    // 캡처 데이터를 localStorage에 저장
-    saveCaptureToStorage(captureData) {
+    // 캡처 데이터를 서버에 저장
+    async saveCaptureToServer(captureData) {
         try {
-            let captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
-            captures.unshift(captureData); // 최신 캡처를 맨 앞에 추가
+            console.log('💾 서버에 캡처 데이터 저장 시작...');
             
-            // 최대 50개까지만 저장 (용량 관리)
-            if (captures.length > 50) {
-                captures = captures.slice(0, 50);
+            // 현재 프로토콜에 맞는 API URL 생성
+            const protocol = window.location.protocol;
+            const hostname = window.location.hostname;
+            const port = protocol === 'https:' ? '17937' : '17936';
+            const apiUrl = `${protocol}//${hostname}:${port}/api/capture/save`;
+            
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    imageData: captureData.dataUrl,
+                    metadata: {
+                        id: captureData.id,
+                        timestamp: captureData.timestamp,
+                        streamKey: captureData.streamKey,
+                        width: captureData.width,
+                        height: captureData.height,
+                        overlayData: captureData.overlayData,
+                        captureType: captureData.captureType,
+                        captureNote: captureData.captureNote,
+                        captureMethod: captureData.captureMethod
+                    }
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`서버 저장 실패: ${response.status} ${response.statusText}`);
             }
             
-            localStorage.setItem('streamCaptures', JSON.stringify(captures));
-            console.log('✅ 캡처 데이터 저장 완료:', captureData.id);
+            const result = await response.json();
+            console.log('✅ 서버 저장 성공:', result);
             
-            // 실시간 캡처 목록 업데이트
-            this.updateCaptureCount();
+            // 로컬 스토리지에도 파일 정보 저장 (호환성 유지)
+            await this.saveCaptureToStorage({
+                ...captureData,
+                serverFile: result.filename,
+                serverPath: result.filepath,
+                savedToServer: true
+            });
+            
+            return result;
             
         } catch (error) {
-            console.error('캡처 데이터 저장 실패:', error);
-            throw new Error('저장 공간 부족 또는 저장 오류');
+            console.error('❌ 서버 저장 실패:', error);
+            
+            // 서버 저장 실패시 로컬스토리지에만 저장 (fallback)
+            console.warn('⚠️ Fallback: 로컬스토리지에만 저장');
+            await this.saveCaptureToStorage({
+                ...captureData,
+                savedToServer: false,
+                serverError: error.message
+            });
+            
+            throw error;
         }
     }
     

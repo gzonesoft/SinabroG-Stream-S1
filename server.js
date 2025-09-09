@@ -6,6 +6,7 @@ const fs = require('fs');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 
@@ -301,6 +302,173 @@ app.get('/api/overlay-data', (req, res) => {
     console.error('Error reading overlay data:', error);
     res.status(500).json({ 
       error: 'Failed to read overlay data',
+      message: error.message 
+    });
+  }
+});
+
+// 캡처 이미지 저장 API
+app.post('/api/capture/save', (req, res) => {
+  try {
+    const { imageData, metadata } = req.body;
+    
+    // 유효성 검사
+    if (!imageData || !imageData.startsWith('data:image/')) {
+      return res.status(400).json({ error: 'Invalid image data' });
+    }
+    
+    // 파일명 생성
+    const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
+    const streamKey = metadata.streamKey || 'unknown';
+    const filename = `capture_${streamKey}_${timestamp}.png`;
+    const filepath = path.join('/Users/gzonesoft/api_files/stream/capture', filename);
+    
+    // Base64 데이터에서 이미지 데이터 추출
+    const base64Data = imageData.replace(/^data:image\/png;base64,/, '');
+    
+    // 파일 저장
+    fs.writeFileSync(filepath, base64Data, 'base64');
+    
+    // 메타데이터 파일 저장
+    const metadataFilename = filename.replace('.png', '_metadata.json');
+    const metadataFilepath = path.join('/Users/gzonesoft/api_files/stream/capture', metadataFilename);
+    
+    const fullMetadata = {
+      ...metadata,
+      filename: filename,
+      filepath: filepath,
+      savedAt: new Date().toISOString(),
+      fileSize: fs.statSync(filepath).size
+    };
+    
+    fs.writeFileSync(metadataFilepath, JSON.stringify(fullMetadata, null, 2));
+    
+    // 성공 응답
+    res.json({
+      success: true,
+      filename: filename,
+      filepath: filepath,
+      metadata: fullMetadata,
+      savedAt: new Date().toISOString()
+    });
+    
+    console.log(`✅ 캡처 이미지 저장 완료: ${filename}`);
+    
+  } catch (error) {
+    console.error('❌ 캡처 이미지 저장 실패:', error);
+    res.status(500).json({ 
+      error: 'Failed to save capture image',
+      message: error.message 
+    });
+  }
+});
+
+// 저장된 캡처 목록 조회 API
+app.get('/api/capture/list', (req, res) => {
+  try {
+    const captureDir = '/Users/gzonesoft/api_files/stream/capture';
+    
+    // 디렉토리 존재 확인
+    if (!fs.existsSync(captureDir)) {
+      return res.json({ captures: [] });
+    }
+    
+    // PNG 파일들만 조회
+    const files = fs.readdirSync(captureDir).filter(file => file.endsWith('.png'));
+    
+    const captures = files.map(filename => {
+      const filepath = path.join(captureDir, filename);
+      const metadataFilename = filename.replace('.png', '_metadata.json');
+      const metadataFilepath = path.join(captureDir, metadataFilename);
+      
+      const stats = fs.statSync(filepath);
+      let metadata = {};
+      
+      // 메타데이터 파일이 있으면 읽기
+      if (fs.existsSync(metadataFilepath)) {
+        try {
+          metadata = JSON.parse(fs.readFileSync(metadataFilepath, 'utf8'));
+        } catch (e) {
+          console.warn('메타데이터 파일 읽기 실패:', metadataFilename);
+        }
+      }
+      
+      return {
+        filename: filename,
+        filepath: filepath,
+        fileSize: stats.size,
+        createdAt: stats.birthtime.toISOString(),
+        modifiedAt: stats.mtime.toISOString(),
+        metadata: metadata
+      };
+    });
+    
+    // 생성 시간 기준 역순 정렬 (최신 먼저)
+    captures.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    res.json({ captures });
+    
+  } catch (error) {
+    console.error('❌ 캡처 목록 조회 실패:', error);
+    res.status(500).json({ 
+      error: 'Failed to list captures',
+      message: error.message 
+    });
+  }
+});
+
+// 특정 캡처 이미지 다운로드 API
+app.get('/api/capture/download/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const filepath = path.join('/Users/gzonesoft/api_files/stream/capture', filename);
+    
+    // 파일 존재 확인
+    if (!fs.existsSync(filepath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    
+    // 파일 다운로드
+    res.download(filepath, filename);
+    
+  } catch (error) {
+    console.error('❌ 캡처 파일 다운로드 실패:', error);
+    res.status(500).json({ 
+      error: 'Failed to download capture',
+      message: error.message 
+    });
+  }
+});
+
+// 특정 캡처 이미지 삭제 API
+app.delete('/api/capture/delete/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const filepath = path.join('/Users/gzonesoft/api_files/stream/capture', filename);
+    const metadataFilename = filename.replace('.png', '_metadata.json');
+    const metadataFilepath = path.join('/Users/gzonesoft/api_files/stream/capture', metadataFilename);
+    
+    // 이미지 파일 삭제
+    if (fs.existsSync(filepath)) {
+      fs.unlinkSync(filepath);
+    }
+    
+    // 메타데이터 파일 삭제
+    if (fs.existsSync(metadataFilepath)) {
+      fs.unlinkSync(metadataFilepath);
+    }
+    
+    res.json({ 
+      success: true,
+      message: `File ${filename} deleted successfully`
+    });
+    
+    console.log(`🗑️ 캡처 이미지 삭제 완료: ${filename}`);
+    
+  } catch (error) {
+    console.error('❌ 캡처 파일 삭제 실패:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete capture',
       message: error.message 
     });
   }
