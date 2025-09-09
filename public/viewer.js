@@ -1386,8 +1386,36 @@ class StreamViewer {
                 video.style.display = originalVideoDisplay;
             }
 
-            // 캔버스를 최고 품질 이미지 데이터로 변환
-            const dataUrl = finalCanvas.toDataURL('image/png', 1.0);
+            // 캔버스를 압축된 이미지 데이터로 변환
+            // 고해상도 이미지는 JPEG로 압축하여 크기 최적화
+            let dataUrl;
+            const canvasArea = finalCanvas.width * finalCanvas.height;
+            
+            if (canvasArea > 1920 * 1080) {
+                // 고해상도는 JPEG 80% 품질로 압축
+                dataUrl = finalCanvas.toDataURL('image/jpeg', 0.8);
+                console.log('📊 고해상도 이미지 JPEG 80% 압축 적용');
+            } else if (canvasArea > 1280 * 720) {
+                // 중간 해상도는 JPEG 90% 품질
+                dataUrl = finalCanvas.toDataURL('image/jpeg', 0.9);
+                console.log('📊 중간해상도 이미지 JPEG 90% 압축 적용');
+            } else {
+                // 낮은 해상도는 PNG로 유지
+                dataUrl = finalCanvas.toDataURL('image/png', 1.0);
+                console.log('📊 저해상도 이미지 PNG 최고품질 유지');
+            }
+            
+            // 압축 후 크기 확인
+            const compressedSizeKB = Math.round((dataUrl.length * 0.75) / 1024);
+            console.log(`📊 압축된 이미지 크기: ${compressedSizeKB}KB`);
+            
+            // 너무 큰 이미지인 경우 추가 압축
+            if (compressedSizeKB > 10240) { // 10MB 이상
+                console.warn('⚠️ 이미지가 너무 큽니다. 추가 압축을 진행합니다.');
+                dataUrl = finalCanvas.toDataURL('image/jpeg', 0.6);
+                const finalSizeKB = Math.round((dataUrl.length * 0.75) / 1024);
+                console.log(`📊 추가 압축 후 크기: ${finalSizeKB}KB`);
+            }
             
             // 현재 화면의 모든 오버레이 정보 수집
             const overlayData = this.collectOverlayData();
@@ -1568,11 +1596,25 @@ class StreamViewer {
         try {
             console.log('💾 서버에 캡처 데이터 저장 시작...');
             
+            // 이미지 크기 사전 검증
+            const imageSizeKB = Math.round((captureData.dataUrl.length * 0.75) / 1024);
+            console.log(`🔍 서버 저장 시도: ${imageSizeKB}KB`);
+            
+            // 크기가 너무 큰 경우 경고 및 추가 압축
+            if (imageSizeKB > 20480) { // 20MB 이상
+                console.warn(`⚠️ 이미지가 매우 큽니다 (${imageSizeKB}KB). 서버 저장을 건너뜁니다.`);
+                throw new Error(`이미지가 너무 큽니다 (${imageSizeKB}KB). 로컬 저장만 수행됩니다.`);
+            } else if (imageSizeKB > 10240) { // 10MB 이상
+                console.warn(`⚠️ 큰 이미지 감지 (${imageSizeKB}KB). 서버 업로드에 시간이 걸릴 수 있습니다.`);
+            }
+            
             // 현재 프로토콜에 맞는 API URL 생성
             const protocol = window.location.protocol;
             const hostname = window.location.hostname;
             const port = protocol === 'https:' ? '17937' : '17936';
             const apiUrl = `${protocol}//${hostname}:${port}/api/capture/save`;
+            console.log('📤 서버 업로드 시작...');
+            const startTime = Date.now();
             
             const response = await fetch(apiUrl, {
                 method: 'POST',
@@ -1595,7 +1637,12 @@ class StreamViewer {
                 })
             });
             
+            const uploadTime = Date.now() - startTime;
+            console.log(`📤 서버 응답 시간: ${uploadTime}ms`);
+            
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`❌ 서버 오류 상세:`, response.status, response.statusText, errorText);
                 throw new Error(`서버 저장 실패: ${response.status} ${response.statusText}`);
             }
             

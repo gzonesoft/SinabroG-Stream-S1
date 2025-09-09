@@ -36,8 +36,10 @@ app.use(cors({
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Range']
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// 업로드 크기 제한 증가 (50MB까지 허용)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('public'));
 
 // favicon.ico 처리 (404 오류 방지)
