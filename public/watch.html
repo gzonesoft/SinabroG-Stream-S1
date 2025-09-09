@@ -113,17 +113,17 @@
                         
                         <!-- 캡처 컨트롤 버튼들 (2개씩 한 줄) -->
                         <div class="capture-controls mb-3">
-                            <div class="row g-2 mb-2">
+                            <div class="row g-3 mb-2">
                                 <div class="col-6">
-                                    <button class="btn btn-danger w-100" onclick="captureFrame()" id="realTimeCaptureBtn">
+                                    <button class="btn btn-danger w-100 capture-btn" onclick="captureFrame()" id="realTimeCaptureBtn">
                                         <i class="fas fa-camera me-1"></i>
-                                        화면 캡처
+                                        <span class="btn-text">화면 캡처</span>
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button class="btn btn-primary w-100" onclick="captureFrame()" title="사용자 화면 그대로 캡처 (오버레이 포함)">
+                                    <button class="btn btn-primary w-100 capture-btn" onclick="captureFrame()" title="사용자 화면 그대로 캡처 (오버레이 포함)">
                                         <i class="fas fa-camera me-1"></i>
-                                        오버레이 캡처
+                                        <span class="btn-text">오버레이 캡처</span>
                                     </button>
                                 </div>
                             </div>
