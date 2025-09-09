@@ -1314,78 +1314,18 @@ class StreamViewer {
             // 비디오 프레임을 캔버스에 그리기
             finalCtx.drawImage(video, containerOffsetX, containerOffsetY, videoWidth, videoHeight);
             
-            // === 2단계: 오버레이를 html2canvas로 캡처 후 합성 ===
-            console.log('🎯 오버레이 캡처 시작...');
+            // === 2단계: 오버레이 데이터를 직접 Canvas에 그리기 ===
+            console.log('🎯 오버레이 직접 렌더링 시작...');
             
-            // 임시로 비디오를 숨기고 오버레이만 캡처
-            const originalVideoDisplay = video.style.display;
-            video.style.display = 'none';
+            // 현재 화면의 모든 오버레이 정보 수집
+            const currentOverlayData = this.collectCurrentOverlayData();
+            console.log('📊 수집된 오버레이 데이터:', currentOverlayData);
             
-            try {
-                const overlayCanvas = await html2canvas(videoContainer, {
-                    allowTaint: true,
-                    useCORS: true,
-                    backgroundColor: null, // 투명 배경
-                    width: containerRect.width,
-                    height: containerRect.height,
-                    scale: scale,
-                    logging: true,
-                    removeContainer: false,
-                    foreignObjectRendering: true,
-                    imageTimeout: 15000,
-                    onclone: (clonedDoc) => {
-                        console.log('🔄 오버레이 클론 문서 처리...');
-                        
-                        // 클론된 비디오 숨기기
-                        const clonedVideo = clonedDoc.querySelector('video');
-                        if (clonedVideo) {
-                            clonedVideo.style.display = 'none';
-                        }
-                        
-                        // 클론된 오버레이 최적화
-                        const clonedOverlays = clonedDoc.querySelectorAll('.video-overlay');
-                        clonedOverlays.forEach((overlay, index) => {
-                            overlay.style.pointerEvents = 'none';
-                            overlay.style.opacity = '1';
-                            overlay.style.visibility = 'visible';
-                            overlay.style.display = 'block';
-                            overlay.style.position = 'absolute';
-                            overlay.style.zIndex = (15 + index).toString();
-                        });
-                        
-                        // 서비스명 오버레이 재확인
-                        const clonedServiceOverlay = clonedDoc.querySelector('.overlay-service-name');
-                        if (clonedServiceOverlay) {
-                            clonedServiceOverlay.textContent = this.serviceName;
-                        }
-                        
-                        // 시간 오버레이 재확인
-                        const clonedTimeOverlay = clonedDoc.querySelector('.overlay-time');
-                        if (clonedTimeOverlay) {
-                            const now = new Date();
-                            const timeString = now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                            const dateString = now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+            // 오버레이를 Canvas에 직접 그리기
+            this.drawOverlaysOnCanvas(finalCtx, finalWidth, finalHeight, scale, currentOverlayData);
+            
+            console.log('✅ 오버레이 직접 렌더링 완료');
                             
-                            const timeElement = clonedTimeOverlay.querySelector('.overlay-current-time');
-                            const dateElement = clonedTimeOverlay.querySelector('.overlay-date');
-                            
-                            if (timeElement) timeElement.textContent = timeString;
-                            if (dateElement) dateElement.textContent = dateString;
-                        }
-                    }
-                });
-                
-                // 오버레이를 최종 캔버스에 합성
-                finalCtx.globalCompositeOperation = 'source-over';
-                finalCtx.drawImage(overlayCanvas, 0, 0);
-                
-                console.log('✅ 오버레이 합성 완료');
-                
-            } finally {
-                // 비디오 다시 표시
-                video.style.display = originalVideoDisplay;
-            }
-
             // 캔버스를 압축된 이미지 데이터로 변환
             // 고해상도 이미지는 JPEG로 압축하여 크기 최적화
             let dataUrl;
@@ -1454,6 +1394,193 @@ class StreamViewer {
             this.showAlert('화면 캡처에 실패했습니다: ' + error.message, 'error');
             throw error;
         }
+    }
+
+    // 현재 화면의 실제 오버레이 데이터 수집 (캡처용)
+    collectCurrentOverlayData() {
+        const overlayData = {
+            serviceName: null,
+            currentTime: null,
+            currentDate: null,
+            sensorData: {}
+        };
+
+        try {
+            // 1. 좌상단 서비스명 오버레이
+            const serviceOverlay = document.querySelector('.overlay-service-name');
+            if (serviceOverlay && serviceOverlay.textContent) {
+                overlayData.serviceName = serviceOverlay.textContent.trim();
+            } else {
+                overlayData.serviceName = this.serviceName || 'AHSYSTEM Live';
+            }
+
+            // 2. 우하단 시간/날짜 오버레이
+            const timeOverlay = document.querySelector('.overlay-time');
+            if (timeOverlay) {
+                const timeElement = timeOverlay.querySelector('.overlay-current-time');
+                const dateElement = timeOverlay.querySelector('.overlay-date');
+                
+                if (timeElement && timeElement.textContent) {
+                    overlayData.currentTime = timeElement.textContent.trim();
+                }
+                
+                if (dateElement && dateElement.textContent) {
+                    overlayData.currentDate = dateElement.textContent.trim();
+                }
+            }
+
+            // 시간 정보가 없으면 현재 시간으로 생성
+            if (!overlayData.currentTime || !overlayData.currentDate) {
+                const now = new Date();
+                
+                if (!overlayData.currentTime) {
+                    overlayData.currentTime = now.toLocaleTimeString('ko-KR', {
+                        hour12: false,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                }
+                
+                if (!overlayData.currentDate) {
+                    overlayData.currentDate = now.toLocaleDateString('ko-KR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        weekday: 'short'
+                    });
+                }
+            }
+
+            // 3. 좌하단 센서 데이터
+            const dataOverlay = document.querySelector('.overlay-data');
+            if (dataOverlay) {
+                const dataFields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED', 'AZIMUTH', 'TILT', 'ROLL'];
+                
+                dataFields.forEach(field => {
+                    const element = dataOverlay.querySelector(`[data-field="${field}"]`);
+                    if (element && element.textContent && element.textContent.trim() !== '--') {
+                        overlayData.sensorData[field] = element.textContent.trim();
+                    } else {
+                        overlayData.sensorData[field] = '--';
+                    }
+                });
+            }
+
+        } catch (error) {
+            console.warn('⚠️ 오버레이 데이터 수집 중 오류:', error);
+        }
+
+        return overlayData;
+    }
+
+    // Canvas에 오버레이 직접 그리기
+    drawOverlaysOnCanvas(ctx, canvasWidth, canvasHeight, scale, overlayData) {
+        // Canvas 설정
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        
+        // 기본 폰트 설정
+        const baseFontSize = Math.max(16 * scale, 24);
+        const largeFontSize = Math.max(20 * scale, 30);
+        const smallFontSize = Math.max(12 * scale, 18);
+        
+        // 1. 좌상단 서비스명 오버레이 그리기
+        if (overlayData.serviceName) {
+            // 반투명 검은 배경
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(20 * scale, 20 * scale, 300 * scale, 50 * scale);
+            
+            // 서비스명 텍스트
+            ctx.font = `bold ${largeFontSize}px 'Noto Sans', sans-serif`;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(overlayData.serviceName, 30 * scale, 35 * scale);
+        }
+
+        // 2. 우하단 시간/날짜 오버레이 그리기
+        if (overlayData.currentTime || overlayData.currentDate) {
+            const rightX = canvasWidth - 20 * scale;
+            const bottomY = canvasHeight - 80 * scale;
+            
+            // 배경 크기 계산
+            const bgWidth = 250 * scale;
+            const bgHeight = 60 * scale;
+            
+            // 반투명 검은 배경
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(rightX - bgWidth, bottomY, bgWidth, bgHeight);
+            
+            // 시간 텍스트 (큰 글씨)
+            if (overlayData.currentTime) {
+                ctx.font = `bold ${largeFontSize}px 'Noto Sans', monospace`;
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'right';
+                ctx.fillText(overlayData.currentTime, rightX - 15 * scale, bottomY + 10 * scale);
+            }
+            
+            // 날짜 텍스트 (작은 글씨)
+            if (overlayData.currentDate) {
+                ctx.font = `${smallFontSize}px 'Noto Sans', sans-serif`;
+                ctx.fillStyle = '#cccccc';
+                ctx.textAlign = 'right';
+                ctx.fillText(overlayData.currentDate, rightX - 15 * scale, bottomY + 35 * scale);
+            }
+        }
+
+        // 3. 좌하단 센서 데이터 오버레이 그리기
+        if (overlayData.sensorData && Object.keys(overlayData.sensorData).length > 0) {
+            const leftX = 20 * scale;
+            const bottomY = canvasHeight - 200 * scale;
+            
+            // 배경 크기 계산
+            const bgWidth = 280 * scale;
+            const bgHeight = 180 * scale;
+            
+            // 반투명 검은 배경
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(leftX, bottomY, bgWidth, bgHeight);
+            
+            // 센서 데이터 제목
+            ctx.font = `bold ${baseFontSize}px 'Noto Sans', sans-serif`;
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'left';
+            ctx.fillText('드론 텔레메트리', leftX + 15 * scale, bottomY + 15 * scale);
+            
+            // 센서 데이터 표시
+            const sensorLabels = {
+                'LATITUDE': '위도',
+                'LONGITUDE': '경도', 
+                'ALTITUDE': '고도',
+                'SPEED': '속도',
+                'AZIMUTH': '방향각',
+                'TILT': '틸트',
+                'ROLL': '롤'
+            };
+            
+            let yOffset = 40 * scale;
+            const lineHeight = 18 * scale;
+            
+            Object.entries(overlayData.sensorData).forEach(([key, value]) => {
+                const label = sensorLabels[key] || key;
+                
+                // 레이블
+                ctx.font = `${smallFontSize}px 'Noto Sans', sans-serif`;
+                ctx.fillStyle = '#cccccc';
+                ctx.fillText(`${label}:`, leftX + 15 * scale, bottomY + yOffset);
+                
+                // 값
+                ctx.fillStyle = value === '--' ? '#999999' : '#ffffff';
+                ctx.fillText(value, leftX + 100 * scale, bottomY + yOffset);
+                
+                yOffset += lineHeight;
+            });
+        }
+
+        // 텍스트 설정 초기화
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        
+        console.log('✅ Canvas에 오버레이 그리기 완료');
     }
 
     // 오버레이 데이터 수집 (사용자가 보는 모든 화면 정보)
