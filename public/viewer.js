@@ -832,10 +832,6 @@ class StreamViewer {
             return null; // null 반환으로 로컬 데이터 사용 지시
         }
     }
-        
-        // 실시간 캡처 목록 업데이트
-        this.updateRecentCaptures();
-    }
 
     // 자동 캡처 상태 업데이트
     updateAutoCaptureStatus() {

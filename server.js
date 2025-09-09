@@ -40,6 +40,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
+// favicon.ico 처리 (404 오류 방지)
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end(); // No Content로 응답 (빈 응답)
+});
+
 // 추가 CORS 헤더 설정
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
