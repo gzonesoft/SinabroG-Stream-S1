@@ -350,8 +350,18 @@ class StreamViewer {
         
         container.appendChild(video);
         container.appendChild(serviceOverlay);
-        container.appendChild(timeOverlay);
-        container.appendChild(dataOverlay);
+        // 비디오가 재생 중이고 정상일 때만 오버레이 추가
+        if (
+            typeof this.isVideoPlaying === 'function'
+            ? this.isVideoPlaying()
+            : (() => {
+                const video = container.querySelector('video');
+                return video && !video.paused && !video.ended && video.readyState >= 2;
+            })()
+        ) {
+            container.appendChild(timeOverlay);
+            container.appendChild(dataOverlay);
+        }
         
         return container;
     }
@@ -373,7 +383,7 @@ class StreamViewer {
         console.log('✅ 시간 오버레이 업데이트 시작'); // 디버깅용 로그
         
         this.timeUpdateInterval = setInterval(() => {
-            console.log('⏰ 시간 오버레이 업데이트 시도 중...', new Date().toLocaleTimeString());
+            //console.log('⏰ 시간 오버레이 업데이트 시도 중...', new Date().toLocaleTimeString());
             this.updateTimeOverlay(timeOverlay);
         }, 1000);
         
@@ -392,28 +402,28 @@ class StreamViewer {
     
     // 데이터 오버레이 업데이트 시작
     startDataOverlayUpdate(container) {
-        console.log('🟦 startDataOverlayUpdate 호출됨!', container);
+        // console.log('🟦 startDataOverlayUpdate 호출됨!', container);
         
         this.stopDataOverlayUpdate(); // 기존 인터벌 정리
         
         const dataOverlay = container.querySelector('.overlay-data');
-        console.log('🔍 데이터 오버레이 요소 검색 결과:', dataOverlay);
+        // console.log('🔍 데이터 오버레이 요소 검색 결과:', dataOverlay);
         
         if (!dataOverlay) {
             console.error('❌ 데이터 오버레이 요소를 찾을 수 없습니다');
-            console.log('📋 container 내부 HTML:', container.innerHTML);
+            // console.log('📋 container 내부 HTML:', container.innerHTML);
             return;
         }
         
-        console.log('✅ 데이터 오버레이 업데이트 시작'); // 디버깅용 로그
+        //console.log('✅ 데이터 오버레이 업데이트 시작'); // 디버깅용 로그
         
         this.dataOverlayInterval = setInterval(() => {
-            console.log('🔄 데이터 오버레이 업데이트 시도 중...', new Date().toLocaleTimeString());
+            // console.log('🔄 데이터 오버레이 업데이트 시도 중...', new Date().toLocaleTimeString());
             this.updateDataOverlay(dataOverlay);
         }, 1000);
         
         // 즉시 한 번 업데이트
-        console.log('⚡ 초기 데이터 오버레이 업데이트 실행');
+        // console.log('⚡ 초기 데이터 오버레이 업데이트 실행');
         this.updateDataOverlay(dataOverlay);
     }
     
@@ -433,7 +443,7 @@ class StreamViewer {
         }
         
         const currentTime = new Date().toLocaleTimeString();
-        console.log(`📡 [${currentTime}] API 호출 시작: /api/overlay-data`);
+        // console.log(`📡 [${currentTime}] API 호출 시작: /api/overlay-data`);
         
         try {
             // 서버에서 데이터 가져오기 - 캐시 방지를 위한 타임스탬프 추가
@@ -457,7 +467,7 @@ class StreamViewer {
                 }
             });
             
-            console.log(`📡 [${currentTime}] API 응답 상태:`, response.status, response.statusText);
+            // console.log(`📡 [${currentTime}] API 응답 상태:`, response.status, response.statusText);
             
             if (!response.ok) {
                 console.error('❌ 오버레이 데이터 API 호출 실패:', response.status, response.statusText);
@@ -467,7 +477,7 @@ class StreamViewer {
             }
             
             const data = await response.json();
-            console.log(`📊 [${currentTime}] 받은 데이터:`, data);
+            // console.log(`📊 [${currentTime}] 받은 데이터:`, data);
             
             // 데이터 변경 감지 (성능 최적화)
             const currentDataHash = JSON.stringify(data);
@@ -476,7 +486,7 @@ class StreamViewer {
                 return; // 데이터 변경없음
             }
             
-            console.log(`🔄 [${currentTime}] 데이터 변경감지 - DOM 업데이트 시작`);
+            // console.log(`🔄 [${currentTime}] 데이터 변경감지 - DOM 업데이트 시작`);
             this.lastDataHash = currentDataHash;
             
             // 각 데이터 필드 업데이트
@@ -485,7 +495,7 @@ class StreamViewer {
             
             fields.forEach(field => {
                 const valueElement = dataOverlay.querySelector(`[data-field="${field}"]`);
-                console.log(`🔍 [${currentTime}] 필드 "${field}" 검색:`, valueElement ? '찾음' : '없음');
+                // console.log(`🔍 [${currentTime}] 필드 "${field}" 검색:`, valueElement ? '찾음' : '없음');
                 
                 if (valueElement && data[field] !== undefined) {
                     let formattedValue = data[field];
@@ -534,8 +544,8 @@ class StreamViewer {
                 }
             });
             
-            console.log(`✅ [${currentTime}] 데이터 오버레이 업데이트 완료: ${updatedCount}개 필드 업데이트`);
-            console.log('----------------------------------------');
+            //console.log(`✅ [${currentTime}] 데이터 오버레이 업데이트 완료: ${updatedCount}개 필드 업데이트`);
+            //console.log('----------------------------------------');
             
             // 성공 표시 (오버레이에 녹색 테두리 잠깐 표시)
             dataOverlay.style.borderColor = '#28a745';
@@ -605,14 +615,14 @@ class StreamViewer {
         
         if (timeElement) {
             timeElement.textContent = timeString;
-            console.log('⏰ 시간 업데이트:', timeString); // 디버깅용 로그
+            //console.log('⏰ 시간 업데이트:', timeString); // 디버깅용 로그
         } else {
             console.warn('⚠️  시간 요소를 찾을 수 없습니다');
         }
         
         if (dateElement) {
             dateElement.textContent = dateString;
-            console.log('📅 날짜 업데이트:', dateString); // 디버깅용 로그
+            //console.log('📅 날짜 업데이트:', dateString); // 디버깅용 로그
         } else {
             console.warn('⚠️  날짜 요소를 찾을 수 없습니다');
         }
@@ -1010,7 +1020,7 @@ class StreamViewer {
                 </style>
             </head>
             <body>
-                <div class="header">
+                <div class="header" style="display: none;">
                     <h2>📸 실시간 스트림 캡처</h2>
                     <p>오버레이 포함 전체 화면 캡처</p>
                 </div>
@@ -1019,7 +1029,7 @@ class StreamViewer {
                     <img src="${capture.dataUrl}" alt="스트림 캡처 이미지">
                 </div>
                 
-                <div class="info-grid">
+                <div class="info-grid" style="display: none;">
                     <div class="info-section">
                         <h3>📋 기본 정보</h3>
                         <div class="info-item">

@@ -11,7 +11,7 @@
         .hero-section {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 4rem 0;
+            padding: 2rem 0;
             text-align: center;
         }
         .stream-card {
@@ -36,7 +36,7 @@
                 <i class="fas fa-video me-3"></i>
                 AHSYSTEM 라이브 스트림
             </h1>
-            <p class="lead mb-4">다양한 방법으로 실시간 스트리밍을 시청하세요</p>
+            <!-- <p class="lead mb-4">다양한 방법으로 실시간 스트리밍을 시청하세요</p> -->
             <div class="row justify-content-center">
                 <div class="col-md-6">
                     <div class="input-group input-group-lg">
@@ -64,7 +64,7 @@
                     <div class="card-header bg-primary text-white">
                         <h4 class="mb-0">
                             <i class="fas fa-desktop me-2"></i>
-                            웹 브라우저에서 시청
+                            Live Stream Player
                         </h4>
                     </div>
                     <div class="card-body">
@@ -102,14 +102,15 @@
                     </div>
                     <div class="card-body">
                         <!-- 메인 캡처 버튼 -->
-                        <div class="text-center mb-4">
+                        <!-- 메인 캡처 버튼 (현재 사용되지 않음) -->
+                        <!-- <div class="text-center mb-4">
                             <button id="captureBtn" class="btn btn-danger btn-lg capture-main-btn" 
                                     onclick="captureFrame()" title="사용자 화면 그대로 캡처 (오버레이 포함)">
                                 <i class="fas fa-camera fa-3x d-block mb-2"></i>
                                 <span class="fw-bold">화면 캡처</span>
                                 <small class="d-block mt-1" style="font-size: 0.7rem; opacity: 0.9;">오버레이 포함</small>
                             </button>
-                        </div>
+                        </div> -->
                         
                         <!-- 캡처 컨트롤 버튼들 (2개씩 한 줄) -->
                         <div class="capture-controls mb-3">
@@ -117,13 +118,13 @@
                                 <div class="col-6">
                                     <button class="btn btn-danger w-100 capture-btn" onclick="captureFrame()" id="realTimeCaptureBtn">
                                         <i class="fas fa-camera me-1"></i>
-                                        <span class="btn-text">화면 캡처</span>
+                                        <span class="btn-text">영상 캡처</span>
                                     </button>
                                 </div>
                                 <div class="col-6">
                                     <button class="btn btn-primary w-100 capture-btn" onclick="captureFrame()" title="사용자 화면 그대로 캡처 (오버레이 포함)">
                                         <i class="fas fa-camera me-1"></i>
-                                        <span class="btn-text">오버레이 캡처</span>
+                                        <span class="btn-text">병합 캡처</span>
                                     </button>
                                 </div>
                             </div>
@@ -147,11 +148,11 @@
                         </div>
                         
                         <!-- 자동 캡처 설명 -->
-                        <div class="text-center mb-3">
+                        <!-- <div class="text-center mb-3">
                             <small class="text-muted">
                                 일정 간격으로 자동 촬영
                             </small>
-                        </div>
+                        </div> -->
                         
                         <!-- 실시간 캡처 이미지 표시 영역 -->
                         <div class="mt-4" id="recentCapturesSection" style="display: none;">
@@ -358,8 +359,8 @@
         <div class="container text-center">
             <p class="mb-0">
                 <i class="fas fa-video me-2"></i>
-                GZONESOFT 스트리밍 서비스 |
-                <a href="https://ai.gzonesoft.com:17937" class="text-light">관리자 페이지</a>
+                AHSystem Streaming Service
+                <!-- <a href="https://ai.gzonesoft.com:17937" class="text-light">관리자 페이지</a> -->
             </p>
             <small class="text-muted">실시간 스트리밍 · 고화질 · 저지연</small>
         </div>
