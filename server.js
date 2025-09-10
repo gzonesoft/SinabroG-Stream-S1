@@ -314,6 +314,69 @@ app.get('/api/overlay-data', (req, res) => {
   }
 });
 
+// 데이터 오버레이 POST API - 외부 앱에서 위치 데이터 업데이트
+app.post('/api/overlay-data', (req, res) => {
+  try {
+    const dataPath = path.join(__dirname, 'data_overly.json');
+    
+    // 요청 본문에서 데이터 추출
+    const overlayData = req.body;
+    
+    // 유효성 검사
+    if (!overlayData || typeof overlayData !== 'object') {
+      return res.status(400).json({ 
+        error: 'Invalid data format',
+        message: 'Request body must be a valid JSON object'
+      });
+    }
+    
+    // 기존 데이터 읽기 (없으면 빈 객체)
+    let existingData = {};
+    if (fs.existsSync(dataPath)) {
+      try {
+        const rawData = fs.readFileSync(dataPath, 'utf8');
+        existingData = JSON.parse(rawData);
+      } catch (err) {
+        console.error('Error reading existing overlay data:', err);
+      }
+    }
+    
+    // 데이터 병합 (받은 데이터로 업데이트)
+    const updatedData = {
+      ...existingData,
+      ...overlayData,
+      _lastUpdated: new Date().toISOString()
+    };
+    
+    // TIME 필드가 없으면 현재 시간 추가
+    if (!updatedData.TIME) {
+      updatedData.TIME = new Date().toISOString();
+    }
+    
+    // 파일에 저장
+    fs.writeFileSync(dataPath, JSON.stringify(updatedData, null, 4));
+    
+    console.log(`[${new Date().toLocaleTimeString()}] 오버레이 데이터 업데이트 (POST):`);
+    console.log(`  받은 데이터:`, overlayData);
+    
+    // Socket.IO로 실시간 브로드캐스트
+    io.emit('overlayDataUpdated', updatedData);
+    
+    res.json({
+      success: true,
+      message: 'Overlay data updated successfully',
+      data: updatedData
+    });
+    
+  } catch (error) {
+    console.error('Error updating overlay data:', error);
+    res.status(500).json({ 
+      error: 'Failed to update overlay data',
+      message: error.message 
+    });
+  }
+});
+
 // 캡처 이미지 저장 API
 app.post('/api/capture/save', (req, res) => {
   try {

@@ -26,10 +26,12 @@ SERVER_PID=$!
 
 sleep 3
 
-# 오버레이 데이터 업데이트 시작 (백그라운드)
-echo "실시간 오버레이 데이터 업데이트 시작 중..."
-nohup node update-overlay-data.js > overlay-data.log 2>&1 &
-OVERLAY_PID=$!
+# 오버레이 데이터 업데이트 시작 (백그라운드) - 외부 앱에서 데이터 전송하므로 비활성화
+# echo "실시간 오버레이 데이터 업데이트 시작 중..."
+# nohup node update-overlay-data.js > overlay-data.log 2>&1 &
+# OVERLAY_PID=$!
+echo "오버레이 데이터는 외부 앱에서 POST API로 전송됩니다."
+OVERLAY_PID="N/A"
 
 sleep 2
 
@@ -59,7 +61,7 @@ echo "   https://ai.gzonesoft.com:17937/api/overlay-data"
 echo ""
 echo "📋 PID 파일 생성..."
 echo "$SERVER_PID" > /tmp/streaming-server.pid
-echo "$OVERLAY_PID" > /tmp/overlay-updater.pid
+# echo "$OVERLAY_PID" > /tmp/overlay-updater.pid  # 오버레이 업데이터 비활성화됨
 
 echo ""
 echo "로그 확인 명령어:"
