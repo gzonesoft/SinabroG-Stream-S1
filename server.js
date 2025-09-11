@@ -527,8 +527,45 @@ app.get('/api/capture/download/:filename', (req, res) => {
       return res.status(404).json({ error: 'File not found' });
     }
     
-    // 파일 다운로드
-    res.download(filepath, filename);
+    // 위치 정보 기반 파일명 생성
+    let downloadFilename = filename;
+    
+    try {
+      // 오버레이 데이터에서 위치 정보 읽기
+      const overlayDataPath = path.join(__dirname, 'data_overly.json');
+      if (fs.existsSync(overlayDataPath)) {
+        const overlayData = JSON.parse(fs.readFileSync(overlayDataPath, 'utf8'));
+        
+        // 현재 시간 또는 TIME 필드 사용
+        const timestamp = overlayData.TIME ? new Date(overlayData.TIME) : new Date();
+        const dateStr = timestamp.toISOString()
+          .replace(/[-:]/g, '')  // - 와 : 제거
+          .replace(/\.\d{3}Z$/, '');  // 밀리초와 Z 제거
+        
+        // 위도, 경도, 고도 정보
+        const latitude = overlayData.LATITUDE || 0;
+        const longitude = overlayData.LONGITUDE || 0;
+        const altitude = Math.round(overlayData.ALTITUDE || 0);
+        
+        // 위도/경도를 정수로 변환 (소수점 6자리까지 유지하면서 점 제거)
+        const latitudeStr = (latitude * 1000000).toFixed(0);
+        const longitudeStr = (longitude * 1000000).toFixed(0);
+        
+        // 파일 확장자 추출
+        const fileExt = path.extname(filename);
+        
+        // 새로운 파일명 생성: 날짜_위도_경도_고도.확장자
+        downloadFilename = `${dateStr}_${latitudeStr}_${longitudeStr}_${altitude}${fileExt}`;
+        
+        console.log(`📁 파일명 변경: ${filename} -> ${downloadFilename}`);
+        console.log(`📍 위치 정보: 위도=${latitude}, 경도=${longitude}, 고도=${altitude}m`);
+      }
+    } catch (locationError) {
+      console.warn('⚠️ 위치 정보 읽기 실패, 원본 파일명 사용:', locationError.message);
+    }
+    
+    // 파일 다운로드 (새로운 파일명으로)
+    res.download(filepath, downloadFilename);
     
   } catch (error) {
     console.error('❌ 캡처 파일 다운로드 실패:', error);

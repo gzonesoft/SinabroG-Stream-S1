@@ -1146,12 +1146,37 @@ class StreamViewer {
             return;
         }
         
-        const link = document.createElement('a');
-        link.download = `stream-capture-${capture.streamKey}-${new Date(capture.timestamp).toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
-        link.href = capture.dataUrl;
-        link.click();
-        
-        this.showAlert('캡처가 다운로드되었습니다.', 'success');
+        // 서버에 저장된 캡처라면 서버 API를 통해 위치정보 기반 파일명으로 다운로드
+        if (capture.serverFile) {
+            console.log('📥 서버 API를 통한 위치정보 기반 파일명 다운로드:', capture.serverFile);
+            
+            // 서버 API를 통해 다운로드
+            const protocol = window.location.protocol;
+            const hostname = window.location.hostname;
+            const port = protocol === 'https:' ? '17937' : '17936';
+            const downloadUrl = `${protocol}//${hostname}:${port}/api/capture/download/${capture.serverFile}`;
+            
+            // 새 탭에서 다운로드 (브라우저 다운로드 처리)
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.target = '_blank';
+            link.download = ''; // 서버에서 파일명 결정
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            this.showAlert('위치정보 기반 파일명으로 다운로드됩니다.', 'success');
+        } else {
+            // 로컬 스토리지의 캡처는 기존 방식 사용
+            console.log('📥 로컬 스토리지 기본 방식 다운로드');
+            
+            const link = document.createElement('a');
+            link.download = `stream-capture-${capture.streamKey}-${new Date(capture.timestamp).toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+            link.href = capture.dataUrl;
+            link.click();
+            
+            this.showAlert('캡처가 다운로드되었습니다.', 'success');
+        }
     }
 
     // 모든 캡처 이미지 전체 삭제
@@ -1894,6 +1919,12 @@ class StreamViewer {
             // 기존 캡처 목록 로드
             let captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
             
+            // 서버 파일 정보 추가
+            if (captureData.serverFile) {
+                captureData.serverFilename = captureData.serverFile;
+                console.log('📄 서버 파일명 저장:', captureData.serverFile);
+            }
+            
             // 새 캡처 데이터 추가
             captures.unshift(captureData); // 최신 데이터를 맨 앞에 추가
             
@@ -1908,6 +1939,9 @@ class StreamViewer {
             
             console.log(`✅ 로컬스토리지 저장 완료: ID ${captureData.id}`);
             console.log(`📊 현재 저장된 캡처 수: ${captures.length}개`);
+            if (captureData.serverFilename) {
+                console.log(`📂 서버 파일: ${captureData.serverFilename}`);
+            }
             
             // 캡처 개수 업데이트
             this.updateCaptureCount();
