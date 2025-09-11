@@ -21,13 +21,16 @@ const sslOptions = {
 const httpServer = http.createServer(app);
 const httpsServer = https.createServer(sslOptions, app);
 
-// Socket.IO는 HTTPS 서버에 연결
+// Socket.IO를 두 서버 모두에 연결
 const io = socketIo(httpsServer, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
   }
 });
+
+// HTTP 서버에도 Socket.IO 연결
+io.attach(httpServer);
 
 // 미들웨어 설정
 app.use(cors({
@@ -322,6 +325,13 @@ app.post('/api/overlay-data', (req, res) => {
     // 요청 본문에서 데이터 추출
     const overlayData = req.body;
     
+    // 디버깅용 로그
+    console.log(`[${new Date().toLocaleTimeString()}] POST /api/overlay-data 요청 수신:`);
+    console.log(`  클라이언트 IP: ${req.ip || req.connection.remoteAddress}`);
+    console.log(`  User-Agent: ${req.headers['user-agent']}`);
+    console.log(`  Protocol: ${req.protocol}`);
+    console.log(`  Secure: ${req.secure}`);
+    
     // 유효성 검사
     if (!overlayData || typeof overlayData !== 'object') {
       return res.status(400).json({ 
@@ -582,9 +592,9 @@ io.on('connection', (socket) => {
 const HTTP_PORT = process.env.HTTP_PORT || 17936;
 const HTTPS_PORT = process.env.HTTPS_PORT || 17937;
 
-// HTTP 서버 (HTTP → HTTPS 리다이렉트)
+// HTTP 서버 (API 지원 포함)
 httpServer.listen(HTTP_PORT, () => {
-  console.log(`HTTP server running on port ${HTTP_PORT} (redirects to HTTPS)`);
+  console.log(`HTTP server running on port ${HTTP_PORT} (API endpoints available)`);
 });
 
 // HTTPS 서버 (메인)
@@ -595,8 +605,14 @@ httpsServer.listen(HTTPS_PORT, () => {
   console.log(`HTTPS-FLV server running on port 18002`);
 });
 
-// HTTP → HTTPS 리다이렉트 미들웨어
+// HTTP → HTTPS 리다이렉트 미들웨어 (API 경로는 제외)
 app.use((req, res, next) => {
+  // API 경로는 HTTP/HTTPS 모두 허용
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  
+  // API가 아닌 경로만 HTTPS로 리다이렉트
   if (req.header('x-forwarded-proto') !== 'https' && req.secure === false) {
     return res.redirect(301, `https://${req.header('host').replace(':17936', ':17937')}${req.url}`);
   }
@@ -608,7 +624,9 @@ nms.run();
 console.log('RTMP Streaming Service Started!');
 console.log('==========================================');
 console.log('RTMP URL: rtmp://ai.gzonesoft.com:17935/live');
-console.log('HTTP Interface: http://ai.gzonesoft.com:17936 (redirects to HTTPS)');
+console.log('HTTP Interface: http://ai.gzonesoft.com:17936');
+console.log('  - API endpoints: http://ai.gzonesoft.com:17936/api/*');
 console.log('HTTPS Interface: https://ai.gzonesoft.com:17937');
 console.log('HTTPS-FLV Stream: https://ai.gzonesoft.com:18002/live/[key].flv');
 console.log('==========================================');
+console.log('NOTE: API endpoints are available on both HTTP and HTTPS');

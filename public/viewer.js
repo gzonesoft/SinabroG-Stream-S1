@@ -350,18 +350,8 @@ class StreamViewer {
         
         container.appendChild(video);
         container.appendChild(serviceOverlay);
-        // 비디오가 재생 중이고 정상일 때만 오버레이 추가
-        if (
-            typeof this.isVideoPlaying === 'function'
-            ? this.isVideoPlaying()
-            : (() => {
-                const video = container.querySelector('video');
-                return video && !video.paused && !video.ended && video.readyState >= 2;
-            })()
-        ) {
-            container.appendChild(timeOverlay);
-            container.appendChild(dataOverlay);
-        }
+        container.appendChild(timeOverlay);
+        container.appendChild(dataOverlay);
         
         return container;
     }
