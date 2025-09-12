@@ -8,6 +8,7 @@ const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
 const PositionLogger = require('./position-logger');
+const CaptureFileHelper = require('./capture-api-helper');
 
 const app = express();
 
@@ -416,14 +417,22 @@ app.post('/api/capture/save', (req, res) => {
       base64Prefix = 'data:image/png;base64,';
     }
     
+    // 현재 날짜로 년/월/일 폴더 경로 생성
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
     // 파일명 생성
-    const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
+    const timestamp = now.toISOString().replace(/:/g, '-').replace(/\./g, '-');
     const streamKey = metadata.streamKey || 'unknown';
     const filename = `capture_${streamKey}_${timestamp}${fileExtension}`;
-    const filepath = path.join('/Users/gzonesoft/api_files/stream/capture', filename);
+    
+    // 년/월/일 구조로 저장 경로 생성
+    const captureDir = path.join('/Users/gzonesoft/api_files/stream/capture', year.toString(), month, day);
+    const filepath = path.join(captureDir, filename);
     
     // 디렉토리가 존재하지 않으면 생성
-    const captureDir = path.dirname(filepath);
     if (!fs.existsSync(captureDir)) {
       fs.mkdirSync(captureDir, { recursive: true });
       console.log(`📁 캡처 저장 디렉토리 생성: ${captureDir}`);
@@ -435,9 +444,9 @@ app.post('/api/capture/save', (req, res) => {
     // 파일 저장
     fs.writeFileSync(filepath, base64Data, 'base64');
     
-    // 메타데이터 파일 저장
+    // 메타데이터 파일 저장 (같은 년/월/일 폴더에)
     const metadataFilename = filename.replace(fileExtension, '_metadata.json');
-    const metadataFilepath = path.join('/Users/gzonesoft/api_files/stream/capture', metadataFilename);
+    const metadataFilepath = path.join(captureDir, metadataFilename);
     
     const fullMetadata = {
       ...metadata,
@@ -472,42 +481,8 @@ app.post('/api/capture/save', (req, res) => {
 // 저장된 캡처 목록 조회 API
 app.get('/api/capture/list', (req, res) => {
   try {
-    const captureDir = '/Users/gzonesoft/api_files/stream/capture';
-    
-    // 디렉토리 존재 확인
-    if (!fs.existsSync(captureDir)) {
-      return res.json({ captures: [] });
-    }
-    
-    // PNG 파일들만 조회
-    const files = fs.readdirSync(captureDir).filter(file => file.endsWith('.png'));
-    
-    const captures = files.map(filename => {
-      const filepath = path.join(captureDir, filename);
-      const metadataFilename = filename.replace('.png', '_metadata.json');
-      const metadataFilepath = path.join(captureDir, metadataFilename);
-      
-      const stats = fs.statSync(filepath);
-      let metadata = {};
-      
-      // 메타데이터 파일이 있으면 읽기
-      if (fs.existsSync(metadataFilepath)) {
-        try {
-          metadata = JSON.parse(fs.readFileSync(metadataFilepath, 'utf8'));
-        } catch (e) {
-          console.warn('메타데이터 파일 읽기 실패:', metadataFilename);
-        }
-      }
-      
-      return {
-        filename: filename,
-        filepath: filepath,
-        fileSize: stats.size,
-        createdAt: stats.birthtime.toISOString(),
-        modifiedAt: stats.mtime.toISOString(),
-        metadata: metadata
-      };
-    });
+    const helper = new CaptureFileHelper();
+    const captures = helper.getCaptureList();
     
     // 생성 시간 기준 역순 정렬 (최신 먼저)
     captures.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -524,14 +499,16 @@ app.get('/api/capture/list', (req, res) => {
 });
 
 // 특정 캡처 이미지 다운로드 API
-app.get('/api/capture/download/:filename', (req, res) => {
+app.get('/api/capture/download/*', (req, res) => {
   try {
-    const filename = req.params.filename;
-    const filepath = path.join('/Users/gzonesoft/api_files/stream/capture', filename);
+    const requestPath = req.params[0];
+    const helper = new CaptureFileHelper();
+    const filepath = helper.findFile(requestPath);
+    const filename = path.basename(requestPath);
     
     // 파일 존재 확인
-    if (!fs.existsSync(filepath)) {
-      return res.status(404).json({ error: 'File not found' });
+    if (!filepath) {
+      return res.status(404).json({ error: 'File not found', requested: requestPath });
     }
     
     // 위치 정보 기반 파일명 생성
@@ -613,20 +590,24 @@ app.get('/api/capture/download/:filename', (req, res) => {
 });
 
 // 특정 캡처 이미지 삭제 API
-app.delete('/api/capture/delete/:filename', (req, res) => {
+app.delete('/api/capture/delete/*', (req, res) => {
   try {
-    const filename = req.params.filename;
-    const filepath = path.join('/Users/gzonesoft/api_files/stream/capture', filename);
-    const metadataFilename = filename.replace('.png', '_metadata.json');
-    const metadataFilepath = path.join('/Users/gzonesoft/api_files/stream/capture', metadataFilename);
+    const requestPath = req.params[0];
+    const helper = new CaptureFileHelper();
+    const filepath = helper.findFile(requestPath);
+    const filename = filepath ? path.basename(filepath) : requestPath;
+    const metadataFilepath = filepath ? helper.getMetadataPath(filepath) : null;
     
-    // 이미지 파일 삭제
-    if (fs.existsSync(filepath)) {
-      fs.unlinkSync(filepath);
+    // 파일 존재 확인
+    if (!filepath) {
+      return res.status(404).json({ error: 'File not found', requested: requestPath });
     }
     
+    // 이미지 파일 삭제
+    fs.unlinkSync(filepath);
+    
     // 메타데이터 파일 삭제
-    if (fs.existsSync(metadataFilepath)) {
+    if (metadataFilepath && fs.existsSync(metadataFilepath)) {
       fs.unlinkSync(metadataFilepath);
     }
     
