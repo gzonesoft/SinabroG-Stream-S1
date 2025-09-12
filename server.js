@@ -7,8 +7,12 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
+const PositionLogger = require('./position-logger');
 
 const app = express();
+
+// 위치정보 로거 초기화
+const positionLogger = new PositionLogger();
 
 // SSL 인증서 설정
 const sslOptions = {
@@ -366,6 +370,9 @@ app.post('/api/overlay-data', (req, res) => {
     // 파일에 저장
     fs.writeFileSync(dataPath, JSON.stringify(updatedData, null, 4));
     
+    // 위치정보 로그 저장 (무조건 기록)
+    positionLogger.logPositionData(updatedData);
+    
     console.log(`[${new Date().toLocaleTimeString()}] 오버레이 데이터 업데이트 (POST):`);
     console.log(`  받은 데이터:`, overlayData);
     
@@ -531,16 +538,44 @@ app.get('/api/capture/download/:filename', (req, res) => {
     let downloadFilename = filename;
     
     try {
-      // 오버레이 데이터에서 위치 정보 읽기
-      const overlayDataPath = path.join(__dirname, 'data_overly.json');
-      if (fs.existsSync(overlayDataPath)) {
-        const overlayData = JSON.parse(fs.readFileSync(overlayDataPath, 'utf8'));
+      // 메타데이터 파일에서 캡처 시점의 정보 읽기
+      const metadataFilename = filename.replace(path.extname(filename), '_metadata.json');
+      const metadataFilepath = path.join('/Users/gzonesoft/api_files/stream/capture', metadataFilename);
+      
+      let overlayData = null;
+      let captureTimestamp = null;
+      
+      // 메타데이터 파일이 있으면 캡처 시점의 정보 사용
+      if (fs.existsSync(metadataFilepath)) {
+        const metadata = JSON.parse(fs.readFileSync(metadataFilepath, 'utf8'));
+        overlayData = metadata.overlayData?.userScreenData?.sensorData;
+        captureTimestamp = metadata.timestamp || metadata.savedAt;
+      }
+      
+      // 메타데이터가 없으면 현재 data_overly.json 사용
+      if (!overlayData) {
+        const overlayDataPath = path.join(__dirname, 'data_overly.json');
+        if (fs.existsSync(overlayDataPath)) {
+          overlayData = JSON.parse(fs.readFileSync(overlayDataPath, 'utf8'));
+          captureTimestamp = overlayData.TIME || new Date().toISOString();
+        }
+      }
+      
+      if (overlayData && overlayData.LATITUDE && overlayData.LONGITUDE) {
+        // 캡처 시점의 시간 사용 (한국 시간으로 변환)
+        const timestamp = new Date(captureTimestamp);
         
-        // 현재 시간 또는 TIME 필드 사용
-        const timestamp = overlayData.TIME ? new Date(overlayData.TIME) : new Date();
-        const dateStr = timestamp.toISOString()
-          .replace(/[-:]/g, '')  // - 와 : 제거
-          .replace(/\.\d{3}Z$/, '');  // 밀리초와 Z 제거
+        // 한국 시간(KST)으로 변환
+        const kstDate = new Date(timestamp.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+        const year = kstDate.getUTCFullYear();
+        const month = String(kstDate.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(kstDate.getUTCDate()).padStart(2, '0');
+        const hour = String(kstDate.getUTCHours()).padStart(2, '0');
+        const minute = String(kstDate.getUTCMinutes()).padStart(2, '0');
+        const second = String(kstDate.getUTCSeconds()).padStart(2, '0');
+        
+        // 날짜 문자열 생성 (YYYYMMDDHHMMSS 형식)
+        const dateStr = `${year}${month}${day}${hour}${minute}${second}`;
         
         // 위도, 경도, 고도 정보
         const latitude = overlayData.LATITUDE || 0;
@@ -559,6 +594,7 @@ app.get('/api/capture/download/:filename', (req, res) => {
         
         console.log(`📁 파일명 변경: ${filename} -> ${downloadFilename}`);
         console.log(`📍 위치 정보: 위도=${latitude}, 경도=${longitude}, 고도=${altitude}m`);
+        console.log(`⏰ 캡처 시간: ${captureTimestamp} -> KST: ${dateStr}`);
       }
     } catch (locationError) {
       console.warn('⚠️ 위치 정보 읽기 실패, 원본 파일명 사용:', locationError.message);

@@ -7,8 +7,10 @@
 
 const fs = require('fs');
 const path = require('path');
+const PositionLogger = require('./position-logger');
 
 const dataPath = path.join(__dirname, 'data_overly.json');
+const positionLogger = new PositionLogger();
 
 // 기본 위치 (서울 시청 근처)
 const baseLocation = {
@@ -92,6 +94,9 @@ function updateOverlayData() {
         
         // 파일에 저장
         fs.writeFileSync(dataPath, JSON.stringify(updatedData, null, 4));
+        
+        // 위치정보 로그 저장
+        positionLogger.logPositionData(updatedData);
         
         console.log(`[${new Date().toLocaleTimeString()}] 오버레이 데이터 업데이트됨:`);
         console.log(`  위도: ${updatedData.LATITUDE}`);
