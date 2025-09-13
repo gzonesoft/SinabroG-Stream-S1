@@ -334,18 +334,6 @@ class StreamViewer {
                 <span class="data-label">속도:</span>
                 <span class="data-value" data-field="SPEED">-- m/s</span>
             </div>
-            <div class="data-row">
-                <span class="data-label">방위각:</span>
-                <span class="data-value" data-field="AZIMUTH">--°</span>
-            </div>
-            <div class="data-row">
-                <span class="data-label">틸트:</span>
-                <span class="data-value" data-field="TILT">--°</span>
-            </div>
-            <div class="data-row">
-                <span class="data-label">롤:</span>
-                <span class="data-value" data-field="ROLL">--°</span>
-            </div>
         `;
         
         container.appendChild(video);
@@ -480,7 +468,7 @@ class StreamViewer {
             this.lastDataHash = currentDataHash;
             
             // 각 데이터 필드 업데이트
-            const fields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED', 'AZIMUTH', 'TILT', 'ROLL'];
+            const fields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED'];
             let updatedCount = 0;
             
             fields.forEach(field => {
@@ -501,11 +489,6 @@ class StreamViewer {
                             break;
                         case 'SPEED':
                             formattedValue = parseFloat(data[field]).toFixed(1) + ' m/s';
-                            break;
-                        case 'AZIMUTH':
-                        case 'TILT':
-                        case 'ROLL':
-                            formattedValue = parseFloat(data[field]).toFixed(1) + '°';
                             break;
                     }
                     
@@ -1104,18 +1087,6 @@ class StreamViewer {
                         <div class="info-item">
                             <span class="info-label">속도:</span>
                             <span class="info-value">${capture.overlayData.userScreenData.sensorData.SPEED || '없음'}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">방위각:</span>
-                            <span class="info-value">${capture.overlayData.userScreenData.sensorData.AZIMUTH || '없음'}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">틸트:</span>
-                            <span class="info-value">${capture.overlayData.userScreenData.sensorData.TILT || '없음'}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">롤:</span>
-                            <span class="info-value">${capture.overlayData.userScreenData.sensorData.ROLL || '없음'}</span>
                         </div>
                     </div>
                     ` : ''}
@@ -1726,7 +1697,7 @@ class StreamViewer {
             // 3. 좌하단 센서 데이터
             const dataOverlay = document.querySelector('.overlay-data');
             if (dataOverlay) {
-                const dataFields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED', 'AZIMUTH', 'TILT', 'ROLL'];
+                const dataFields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED'];
                 
                 dataFields.forEach(field => {
                     const element = dataOverlay.querySelector(`[data-field="${field}"]`);
@@ -2010,7 +1981,7 @@ class StreamViewer {
             // 3. 센서 데이터 오버레이 (좌하단)
             const dataOverlay = document.querySelector('.overlay-data');
             if (dataOverlay) {
-                const dataFields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED', 'AZIMUTH', 'TILT', 'ROLL'];
+                const dataFields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED'];
                 let sensorDataCollected = 0;
                 
                 dataFields.forEach(field => {
@@ -2028,7 +1999,7 @@ class StreamViewer {
             } else {
                 console.warn('⚠️ 좌하단 센서 데이터 오버레이를 찾을 수 없습니다');
                 // 기본값으로 설정
-                const dataFields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED', 'AZIMUTH', 'TILT', 'ROLL'];
+                const dataFields = ['LATITUDE', 'LONGITUDE', 'ALTITUDE', 'SPEED'];
                 dataFields.forEach(field => {
                     overlayData.userScreenData.sensorData[field] = '--';
                 });
@@ -2056,10 +2027,7 @@ class StreamViewer {
                     LATITUDE: '--',
                     LONGITUDE: '--',
                     ALTITUDE: '--',
-                    SPEED: '--',
-                    AZIMUTH: '--',
-                    TILT: '--',
-                    ROLL: '--'
+                    SPEED: '--'
                 }
             };
             
