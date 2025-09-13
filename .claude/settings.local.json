@@ -11,7 +11,9 @@
       "Bash(curl:*)",
       "Bash(npm start)",
       "Read(//Users/gzonesoft/api_files/stream/capture/**)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(docker exec:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

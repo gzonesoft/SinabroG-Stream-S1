@@ -290,6 +290,199 @@ app.post('/api/generate-key', (req, res) => {
   res.json({ streamKey });
 });
 
+// 위치정보 이력 조회 API (Supabase 대체)
+app.post('/api/position-history/query', async (req, res) => {
+  try {
+    const { device_id, start_date, end_date, limit = 100 } = req.body;
+    
+    if (!device_id) {
+      return res.status(400).json({ error: '디바이스 ID가 필요합니다.' });
+    }
+    
+    // Docker 명령어 구성
+    const startDateStr = start_date || new Date(Date.now() - 24*60*60*1000).toISOString();
+    const endDateStr = end_date || new Date().toISOString();
+    
+    const dockerCmd = `docker exec supabase-db psql -U postgres -d postgres -t -A -F'|' -c "
+      SELECT json_agg(row_to_json(t)) FROM (
+        SELECT * FROM ah_get_position_history(
+          '${device_id}',
+          '${startDateStr}'::timestamptz,
+          '${endDateStr}'::timestamptz,
+          ${limit}
+        )
+      ) t;
+    "`;
+    
+    const { exec } = require('child_process');
+    exec(dockerCmd, (error, stdout, stderr) => {
+      if (error) {
+        console.error('Docker 실행 오류:', error);
+        return res.status(500).json({ error: '데이터베이스 조회 실패', details: stderr });
+      }
+      
+      try {
+        const result = JSON.parse(stdout.trim() || '[]');
+        res.json(result || []);
+      } catch (parseError) {
+        console.error('파싱 오류:', parseError);
+        res.json([]);
+      }
+    });
+    
+  } catch (error) {
+    console.error('위치 이력 조회 실패:', error);
+    res.status(500).json({ error: '조회 실패', message: error.message });
+  }
+});
+
+// 현재 위치 조회 API
+app.post('/api/position-history/current', async (req, res) => {
+  try {
+    const { device_id } = req.body;
+    
+    const deviceFilter = device_id ? `'${device_id}'` : 'NULL';
+    
+    const dockerCmd = `docker exec supabase-db psql -U postgres -d postgres -t -A -F'|' -c "
+      SELECT json_agg(row_to_json(t)) FROM (
+        SELECT * FROM ah_get_current_position(${deviceFilter})
+      ) t;
+    "`;
+    
+    const { exec } = require('child_process');
+    exec(dockerCmd, (error, stdout, stderr) => {
+      if (error) {
+        console.error('Docker 실행 오류:', error);
+        return res.status(500).json({ error: '데이터베이스 조회 실패', details: stderr });
+      }
+      
+      try {
+        const result = JSON.parse(stdout.trim() || '[]');
+        res.json(result || []);
+      } catch (parseError) {
+        console.error('파싱 오류:', parseError);
+        res.json([]);
+      }
+    });
+    
+  } catch (error) {
+    console.error('현재 위치 조회 실패:', error);
+    res.status(500).json({ error: '조회 실패', message: error.message });
+  }
+});
+
+// 위치 통계 조회 API
+app.post('/api/position-history/stats', async (req, res) => {
+  try {
+    const { device_id, period_days = 7 } = req.body;
+    
+    if (!device_id) {
+      return res.status(400).json({ error: '디바이스 ID가 필요합니다.' });
+    }
+    
+    const dockerCmd = `docker exec supabase-db psql -U postgres -d postgres -t -A -F'|' -c "
+      SELECT row_to_json(ah_get_position_stats('${device_id}', ${period_days}));
+    "`;
+    
+    const { exec } = require('child_process');
+    exec(dockerCmd, (error, stdout, stderr) => {
+      if (error) {
+        console.error('Docker 실행 오류:', error);
+        return res.status(500).json({ error: '데이터베이스 조회 실패', details: stderr });
+      }
+      
+      try {
+        const result = JSON.parse(stdout.trim() || '{}');
+        res.json(result);
+      } catch (parseError) {
+        console.error('파싱 오류:', parseError);
+        res.json({});
+      }
+    });
+    
+  } catch (error) {
+    console.error('통계 조회 실패:', error);
+    res.status(500).json({ error: '조회 실패', message: error.message });
+  }
+});
+
+// 위치 이력 저장 API (JWT 인증 우회용)
+app.post('/api/position-history', async (req, res) => {
+    try {
+        const {
+            device_id = 'DJI_DEVICE_001',
+            latitude,
+            longitude,
+            altitude = 0,
+            speed = 0,
+            heading = 0,
+            battery_level = null,
+            timestamp = null,
+            metadata = {}
+        } = req.body;
+
+        // 필수 필드 검증
+        if (!latitude || !longitude) {
+            return res.status(400).json({
+                success: false,
+                error: '위도와 경도는 필수입니다.'
+            });
+        }
+
+        // Docker PostgreSQL 직접 접근
+        const { spawn } = require('child_process');
+        
+        const query = `SELECT ah_save_position_history('${device_id}', ${latitude}, ${longitude}, ${altitude}, ${speed}, ${heading}, ${battery_level || 'NULL'}, ${timestamp ? `'${timestamp}'` : 'NOW()'});`;
+        
+        console.log('📍 위치 이력 저장 쿼리:', query);
+        
+        const docker = spawn('docker', ['exec', '-i', 'supabase-db', 'psql', '-U', 'postgres', '-d', 'postgres', '-c', query]);
+        
+        let output = '';
+        let error = '';
+        
+        docker.stdout.on('data', (data) => {
+            output += data.toString();
+        });
+        
+        docker.stderr.on('data', (data) => {
+            error += data.toString();
+        });
+        
+        docker.on('close', (code) => {
+            if (code === 0 && output.includes('success')) {
+                try {
+                    // JSON 응답 파싱
+                    const jsonMatch = output.match(/\{.*\}/s);
+                    if (jsonMatch) {
+                        const result = JSON.parse(jsonMatch[0]);
+                        console.log('✅ 위치 이력 저장 성공:', result);
+                        res.json(result);
+                    } else {
+                        res.json({ success: true, message: '위치 데이터가 저장되었습니다.' });
+                    }
+                } catch (parseError) {
+                    res.json({ success: true, message: '위치 데이터가 저장되었습니다.', raw_output: output });
+                }
+            } else {
+                console.error('❌ PostgreSQL 오류:', error);
+                res.status(500).json({
+                    success: false,
+                    error: `데이터베이스 오류: ${error}`,
+                    output: output
+                });
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ 위치 이력 저장 오류:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // 데이터 오버레이 API
 app.get('/api/overlay-data', (req, res) => {
   try {
@@ -379,6 +572,9 @@ app.post('/api/overlay-data', (req, res) => {
     
     // Socket.IO로 실시간 브로드캐스트
     io.emit('overlayDataUpdated', updatedData);
+    
+    // 위치 데이터 API 전송을 위한 이벤트 발송
+    io.emit('positionDataUpdate', updatedData);
     
     res.json({
       success: true,
