@@ -516,17 +516,42 @@ app.get('/api/capture/download/*', (req, res) => {
     
     try {
       // 메타데이터 파일에서 캡처 시점의 정보 읽기
-      const metadataFilename = filename.replace(path.extname(filename), '_metadata.json');
-      const metadataFilepath = path.join('/Users/gzonesoft/api_files/stream/capture', metadataFilename);
+      // filepath에서 메타데이터 경로 생성 (같은 디렉토리에 있음)
+      const metadataFilepath = filepath.replace(path.extname(filepath), '_metadata.json');
+      console.log('메타데이터 파일 경로:', metadataFilepath);
       
       let overlayData = null;
       let captureTimestamp = null;
       
       // 메타데이터 파일이 있으면 캡처 시점의 정보 사용
       if (fs.existsSync(metadataFilepath)) {
+        console.log('✅ 메타데이터 파일 발견!');
         const metadata = JSON.parse(fs.readFileSync(metadataFilepath, 'utf8'));
-        overlayData = metadata.overlayData?.userScreenData?.sensorData;
+        const sensorData = metadata.overlayData?.userScreenData?.sensorData;
+        
+        console.log('센서 데이터:', JSON.stringify(sensorData, null, 2));
+        
+        // 센서 데이터가 문자열 형식인 경우 변환
+        if (sensorData) {
+          overlayData = {
+            LATITUDE: typeof sensorData.LATITUDE === 'string' ? parseFloat(sensorData.LATITUDE) : sensorData.LATITUDE,
+            LONGITUDE: typeof sensorData.LONGITUDE === 'string' ? parseFloat(sensorData.LONGITUDE) : sensorData.LONGITUDE,
+            ALTITUDE: typeof sensorData.ALTITUDE === 'string' ? parseFloat(sensorData.ALTITUDE.replace(/[^\d.-]/g, '')) : sensorData.ALTITUDE,
+            TIME: sensorData.TIME
+          };
+          console.log('변환된 데이터:');
+          console.log('  위도:', overlayData.LATITUDE);
+          console.log('  경도:', overlayData.LONGITUDE);
+          console.log('  고도 원본:', sensorData.ALTITUDE);
+          console.log('  고도 변환:', overlayData.ALTITUDE);
+        } else {
+          console.log('⚠️ 센서 데이터가 없음');
+          overlayData = null;
+        }
+        
         captureTimestamp = metadata.timestamp || metadata.savedAt;
+      } else {
+        console.log('❌ 메타데이터 파일 없음:', metadataFilepath);
       }
       
       // 메타데이터가 없으면 현재 data_overly.json 사용
@@ -538,40 +563,117 @@ app.get('/api/capture/download/*', (req, res) => {
         }
       }
       
+      // 로그 파일에 다운로드 요청 기록
+      const logEntry = {
+        requestTime: new Date().toISOString(),
+        requestedFile: filename,
+        metadataPath: metadataFilepath,
+        metadataExists: fs.existsSync(metadataFilepath),
+        captureTimestamp: captureTimestamp,
+        overlayData: overlayData ? {
+          LATITUDE: overlayData.LATITUDE,
+          LONGITUDE: overlayData.LONGITUDE,
+          ALTITUDE: overlayData.ALTITUDE,
+          TIME: overlayData.TIME
+        } : null
+      };
+      
+      console.log('\n========== 다운로드 요청 디버깅 ==========');
+      console.log('요청 파일:', filename);
+      console.log('메타데이터 경로:', metadataFilepath);
+      console.log('메타데이터 존재:', fs.existsSync(metadataFilepath));
+      console.log('캡처 타임스탬프:', captureTimestamp);
+      console.log('오버레이 데이터:', logEntry.overlayData);
+      
       if (overlayData && overlayData.LATITUDE && overlayData.LONGITUDE) {
-        // 캡처 시점의 시간 사용 (한국 시간으로 변환)
-        const timestamp = new Date(captureTimestamp);
+        // 캡처 시점의 시간 사용 - 다양한 형식 처리
+        let timestamp;
+        let dateStr = '';
         
-        // 한국 시간(KST)으로 변환
-        const kstDate = new Date(timestamp.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
-        const year = kstDate.getUTCFullYear();
-        const month = String(kstDate.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(kstDate.getUTCDate()).padStart(2, '0');
-        const hour = String(kstDate.getUTCHours()).padStart(2, '0');
-        const minute = String(kstDate.getUTCMinutes()).padStart(2, '0');
-        const second = String(kstDate.getUTCSeconds()).padStart(2, '0');
-        
-        // 날짜 문자열 생성 (YYYYMMDDHHMMSS 형식)
-        const dateStr = `${year}${month}${day}${hour}${minute}${second}`;
+        try {
+          // captureTimestamp가 유효한지 확인
+          if (!captureTimestamp || captureTimestamp === 'undefined') {
+            console.warn('⚠️ captureTimestamp가 없음, 현재 시간 사용');
+            captureTimestamp = new Date().toISOString();
+          }
+          
+          // Java/Android 형식의 타임스탬프 처리 (타임존 정보 제거)
+          // 예: "2025-09-13T11:20:08.108+09:00[Asia/Seoul]" -> "2025-09-13T11:20:08.108+09:00"
+          if (typeof captureTimestamp === 'string' && captureTimestamp.includes('[')) {
+            captureTimestamp = captureTimestamp.split('[')[0];
+            console.log('타임존 정보 제거:', captureTimestamp);
+          }
+          
+          timestamp = new Date(captureTimestamp);
+          
+          // 날짜가 유효한지 확인
+          if (isNaN(timestamp.getTime())) {
+            console.warn('⚠️ 유효하지 않은 타임스탬프:', captureTimestamp);
+            // ISO 8601 형식으로 다시 시도
+            if (typeof captureTimestamp === 'string') {
+              // +09:00 형식을 제거하고 Z로 변환 시도
+              const cleanTimestamp = captureTimestamp.replace(/[+-]\d{2}:\d{2}$/, 'Z');
+              timestamp = new Date(cleanTimestamp);
+              
+              if (isNaN(timestamp.getTime())) {
+                console.warn('⚠️ 여전히 유효하지 않음, 현재 시간 사용');
+                timestamp = new Date();
+              }
+            } else {
+              timestamp = new Date();
+            }
+          }
+          
+          // 한국 시간(KST) 처리
+          // timestamp는 이미 정확한 시간을 가지고 있음 (타임존 정보 포함)
+          // 로컬 시간으로 직접 사용
+          const year = timestamp.getFullYear();
+          const month = String(timestamp.getMonth() + 1).padStart(2, '0');
+          const day = String(timestamp.getDate()).padStart(2, '0');
+          const hour = String(timestamp.getHours()).padStart(2, '0');
+          const minute = String(timestamp.getMinutes()).padStart(2, '0');
+          const second = String(timestamp.getSeconds()).padStart(2, '0');
+          
+          // 날짜 문자열 생성 (YYYYMMDDHHMMSS 형식)
+          dateStr = `${year}${month}${day}${hour}${minute}${second}`;
+          
+          console.log('날짜 변환 성공:', dateStr);
+        } catch (dateError) {
+          console.error('❌ 날짜 변환 실패:', dateError);
+          // 오류 시 현재 날짜 사용
+          const now = new Date();
+          const kstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+          dateStr = kstNow.toISOString().slice(0, 19).replace(/[-:T]/g, '').slice(0, 14);
+          console.log('기본 날짜 사용:', dateStr);
+        }
         
         // 위도, 경도, 고도 정보
         const latitude = overlayData.LATITUDE || 0;
         const longitude = overlayData.LONGITUDE || 0;
-        const altitude = Math.round(overlayData.ALTITUDE || 0);
+        // 고도 처리 - 소수점 1자리까지 유지하고 음수는 0으로
+        const rawAltitude = overlayData.ALTITUDE || 0;
+        const altitude = Math.max(0, rawAltitude);
+        // 고도를 소수점 1자리로 포맷하고 점을 #으로 대체
+        const altitudeStr = altitude.toFixed(1).replace('.', '#');
         
-        // 위도/경도를 정수로 변환 (소수점 6자리까지 유지하면서 점 제거)
-        const latitudeStr = (latitude * 1000000).toFixed(0);
-        const longitudeStr = (longitude * 1000000).toFixed(0);
+        // 위도/경도를 문자열로 변환하고 소수점을 #으로 대체
+        const latitudeStr = latitude.toString().replace('.', '#');
+        const longitudeStr = longitude.toString().replace('.', '#');
         
         // 파일 확장자 추출
         const fileExt = path.extname(filename);
         
         // 새로운 파일명 생성: 날짜_위도_경도_고도.확장자
-        downloadFilename = `${dateStr}_${latitudeStr}_${longitudeStr}_${altitude}${fileExt}`;
+        downloadFilename = `${dateStr}_${latitudeStr}_${longitudeStr}_${altitudeStr}${fileExt}`;
         
         console.log(`📁 파일명 변경: ${filename} -> ${downloadFilename}`);
-        console.log(`📍 위치 정보: 위도=${latitude}, 경도=${longitude}, 고도=${altitude}m`);
+        console.log(`📍 위치 정보: 위도=${latitude}, 경도=${longitude}, 고도=${rawAltitude}m (표시: ${altitudeStr}m)`);
         console.log(`⏰ 캡처 시간: ${captureTimestamp} -> KST: ${dateStr}`);
+        console.log('========================================\n');
+        
+        // 다운로드 로그 파일에 기록
+        const downloadLog = `${new Date().toISOString()} | 요청: ${filename} | 생성: ${downloadFilename} | 위치: ${latitude},${longitude},${rawAltitude} (표시: ${altitudeStr})\n`;
+        fs.appendFileSync(path.join(__dirname, 'download.log'), downloadLog);
       }
     } catch (locationError) {
       console.warn('⚠️ 위치 정보 읽기 실패, 원본 파일명 사용:', locationError.message);

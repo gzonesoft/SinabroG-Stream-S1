@@ -204,16 +204,35 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="/js/capture-api-client.js"></script>
+    <script src="/js/capture-api-config.js"></script>
     <script>
         class CameraGallery {
             constructor() {
-                this.captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+                this.captures = [];
                 this.currentStreamKey = null;
                 this.currentImageId = null;
                 this.init();
             }
+            
+            // 안전한 날짜 포맷팅 함수
+            formatDate(timestamp) {
+                try {
+                    let date = timestamp;
+                    if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+                        date = new Date(timestamp);
+                    }
+                    
+                    if (date instanceof Date && !isNaN(date)) {
+                        return date.toLocaleString();
+                    }
+                } catch (error) {
+                    console.error('날짜 포맷팅 오류:', error);
+                }
+                return '알 수 없음';
+            }
 
-            init() {
+            async init() {
                 // URL에서 스트림 키 가져오기
                 const urlParams = new URLSearchParams(window.location.search);
                 this.currentStreamKey = urlParams.get('key');
@@ -223,13 +242,13 @@
                     document.getElementById('captureFromStreamBtn').disabled = false;
                 }
 
-                this.loadCaptures();
+                await this.loadCaptures();
                 this.renderGallery();
                 this.loadStreamStatus();
 
                 // 새로고침 주기 (새 캡처 확인용)
-                setInterval(() => {
-                    this.loadCaptures();
+                setInterval(async () => {
+                    await this.loadCaptures();
                     this.renderGallery();
                 }, 10000); // 10초마다 새로고침
             }
@@ -250,23 +269,28 @@
                 }
             }
 
-            loadCaptures() {
-                this.captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
-                
-                // 현재 스트림 키에 해당하는 캡처만 필터링 (선택사항)
-                if (this.currentStreamKey) {
-                    this.captures = this.captures.filter(c => 
-                        !c.streamKey || c.streamKey === this.currentStreamKey || c.streamKey === 'unknown'
-                    );
+            async loadCaptures() {
+                try {
+                    // API를 통해 캡처 목록 가져오기
+                    this.captures = await window.captureStorage.getCaptures(this.currentStreamKey);
+                    console.log(`${this.captures.length}개 캡처 로드됨`);
+                } catch (error) {
+                    console.error('캡처 로드 실패:', error);
+                    this.captures = [];
                 }
             }
 
-            renderGallery() {
-                this.loadCaptures(); // 렌더링 전에 최신 데이터 로드
+            async renderGallery() {
+                try {
+                    await this.loadCaptures(); // 렌더링 전에 최신 데이터 로드
+                } catch (error) {
+                    console.error('캡처 로드 실패:', error);
+                }
+                
                 const gallery = document.getElementById('captureGallery');
                 const emptyMessage = document.getElementById('emptyGallery');
 
-                if (this.captures.length === 0) {
+                if (!this.captures || this.captures.length === 0) {
                     gallery.innerHTML = '';
                     emptyMessage.style.display = 'block';
                     return;
@@ -292,8 +316,8 @@
                                 </h6>
                                 <p class="card-text">
                                     <small class="text-muted">
-                                        <i class="fas fa-key me-1"></i>스트림: ${capture.streamKey}<br>
-                                        <i class="fas fa-clock me-1"></i>${new Date(capture.timestamp).toLocaleString()}
+                                        <i class="fas fa-key me-1"></i>스트림: ${capture.streamKey || '알 수 없음'}<br>
+                                        <i class="fas fa-clock me-1"></i>${this.formatDate(capture.timestamp)}
                                     </small>
                                 </p>
                                 <div class="capture-actions">
@@ -382,9 +406,24 @@
                     this.showAlert('위치정보 기반 파일명으로 다운로드됩니다.', 'success');
                 } else {
                     // 로컬 스토리지의 캡처는 기존 방식 사용
+                    // timestamp가 숫자인지 확인하고 Date 객체로 변환
+                    let timestamp = capture.timestamp;
+                    if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+                        timestamp = new Date(timestamp);
+                    }
+                    
+                    // 유효한 날짜인지 확인
+                    let dateStr = '';
+                    if (timestamp instanceof Date && !isNaN(timestamp)) {
+                        dateStr = timestamp.toISOString().slice(0, 19).replace(/:/g, '-');
+                    } else {
+                        // 날짜가 유효하지 않으면 현재 시간 사용
+                        dateStr = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                    }
+                    
                     const link = document.createElement('a');
-                    link.download = `stream-capture-${capture.streamKey}-${new Date(capture.timestamp).toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
-                    link.href = capture.dataUrl;
+                    link.download = `stream-capture-${capture.streamKey || 'unknown'}-${dateStr}.png`;
+                    link.href = capture.dataUrl || capture.imageData;
                     link.click();
                 }
             }
@@ -395,23 +434,23 @@
 
                 this.currentImageId = captureId;
                 
-                document.getElementById('modalImage').src = capture.dataUrl;
+                document.getElementById('modalImage').src = capture.dataUrl || capture.imageData || '';
                 document.getElementById('imageInfo').innerHTML = `
                     <div class="row text-start">
                         <div class="col-md-6">
                             <h6><i class="fas fa-info-circle me-2"></i>캡처 정보</h6>
                             <ul class="list-unstyled">
-                                <li><strong>스트림 키:</strong> ${capture.streamKey}</li>
-                                <li><strong>캡처 시간:</strong> ${new Date(capture.timestamp).toLocaleString()}</li>
+                                <li><strong>스트림 키:</strong> ${capture.streamKey || '알 수 없음'}</li>
+                                <li><strong>캡처 시간:</strong> ${this.formatDate(capture.timestamp)}</li>
                                 <li><strong>해상도:</strong> ${capture.width || '알 수 없음'} × ${capture.height || '알 수 없음'}</li>
                             </ul>
                         </div>
                         <div class="col-md-6">
                             <h6><i class="fas fa-chart-bar me-2"></i>파일 정보</h6>
                             <ul class="list-unstyled">
-                                <li><strong>파일 크기:</strong> ${this.formatFileSize(capture.dataUrl.length * 0.75)}</li>
+                                <li><strong>파일 크기:</strong> ${this.formatFileSize((capture.dataUrl || capture.imageData || '').length * 0.75)}</li>
                                 <li><strong>형식:</strong> PNG</li>
-                                <li><strong>ID:</strong> ${capture.id.substring(0, 8)}...</li>
+                                <li><strong>ID:</strong> ${(capture.id || '').substring(0, 8)}...</li>
                             </ul>
                         </div>
                     </div>
@@ -451,8 +490,15 @@
                 }
             }
 
-            saveCaptures() {
-                localStorage.setItem('streamCaptures', JSON.stringify(this.captures));
+            async saveCaptures() {
+                // API를 통해 저장 (배치 저장 사용)
+                try {
+                    if (this.captures.length > 0) {
+                        await window.captureStorage.batchSaveCaptures(this.captures);
+                    }
+                } catch (error) {
+                    console.error('캡처 저장 실패:', error);
+                }
             }
 
             showAlert(message, type) {
@@ -516,8 +562,8 @@
             cameraGallery.downloadCapture(id);
         }
 
-        function deleteCapture(id) {
-            cameraGallery.deleteCapture(id);
+        async function deleteCapture(id) {
+            await cameraGallery.deleteCapture(id);
         }
 
         function showImageDetail(id) {

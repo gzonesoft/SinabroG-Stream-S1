@@ -747,14 +747,11 @@ class StreamViewer {
     // 캡처 개수 업데이트 (서버와 로컬 혼용)
     async updateCaptureCount() {
         try {
-            // 서버에서 캡처 목록 조회 시도
-            const serverCount = await this.getServerCaptureCount();
-            const localCaptures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+            // window.captureStorage를 통해 실제 캡처 목록 조회 (API 또는 localStorage)
+            const captures = await window.captureStorage.getCaptures().catch(() => []);
+            const count = captures.length;
             
-            // 서버 우선, fallback으로 로컬 사용
-            const count = serverCount !== null ? serverCount : localCaptures.length;
-            
-            console.log(`📊 캡처 개수 업데이트: 서버 ${serverCount}, 로컬 ${localCaptures.length}, 사용 ${count}`);
+            console.log(`📊 캡처 개수 업데이트: ${count}개`);
             
             // 갤러리 뱃지 업데이트
             const galleryBadge = document.getElementById('galleryBadge');
@@ -840,8 +837,8 @@ class StreamViewer {
     }
 
     // 실시간 캡처 목록 업데이트
-    updateRecentCaptures() {
-        const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+    async updateRecentCaptures() {
+        const captures = await window.captureStorage.getCaptures().catch(() => []);
         const recentCapturesSection = document.getElementById('recentCapturesSection');
         const recentCapturesContainer = document.getElementById('recentCapturesContainer');
         
@@ -1169,20 +1166,27 @@ class StreamViewer {
     }
 
     // 최근 캡처 삭제
-    deleteRecentCapture(captureId) {
+    async deleteRecentCapture(captureId) {
         if (confirm('이 캡처를 삭제하시겠습니까?')) {
-            let captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
-            captures = captures.filter(c => c.id !== captureId);
-            localStorage.setItem('streamCaptures', JSON.stringify(captures));
-            
-            this.updateCaptureCount();
-            this.showAlert('캡처가 삭제되었습니다.', 'info');
+            try {
+                const result = await window.captureStorage.deleteCapture(captureId);
+                if (result.success) {
+                    this.updateCaptureCount();
+                    this.updateRecentCaptures();
+                    this.showAlert('캡처가 삭제되었습니다.', 'info');
+                } else {
+                    this.showAlert('캡처 삭제에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('캡처 삭제 실패:', error);
+                this.showAlert('캡처 삭제에 실패했습니다.', 'error');
+            }
         }
     }
 
     // 캡처 다운로드
-    downloadCapture(captureId) {
-        const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+    async downloadCapture(captureId) {
+        const captures = await window.captureStorage.getCaptures().catch(() => []);
         const capture = captures.find(c => c.id === captureId);
         
         if (!capture) {
@@ -1214,9 +1218,24 @@ class StreamViewer {
             // 로컬 스토리지의 캡처는 기존 방식 사용
             console.log('📥 로컬 스토리지 기본 방식 다운로드');
             
+            // timestamp가 숫자인지 확인하고 Date 객체로 변환
+            let timestamp = capture.timestamp;
+            if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+                timestamp = new Date(timestamp);
+            }
+            
+            // 유효한 날짜인지 확인
+            let dateStr = '';
+            if (timestamp instanceof Date && !isNaN(timestamp)) {
+                dateStr = timestamp.toISOString().slice(0, 19).replace(/:/g, '-');
+            } else {
+                // 날짜가 유효하지 않으면 현재 시간 사용
+                dateStr = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            }
+            
             const link = document.createElement('a');
-            link.download = `stream-capture-${capture.streamKey}-${new Date(capture.timestamp).toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
-            link.href = capture.dataUrl;
+            link.download = `stream-capture-${capture.streamKey || 'unknown'}-${dateStr}.png`;
+            link.href = capture.dataUrl || capture.imageData;
             link.click();
             
             this.showAlert('캡처가 다운로드되었습니다.', 'success');
@@ -1224,8 +1243,8 @@ class StreamViewer {
     }
 
     // 모든 캡처 이미지 전체 삭제
-    clearAllRecentCaptures() {
-        const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+    async clearAllRecentCaptures() {
+        const captures = await window.captureStorage.getCaptures().catch(() => []);
         
         if (captures.length === 0) {
             this.showAlert('삭제할 캡처 이미지가 없습니다.', 'info');
@@ -1234,10 +1253,14 @@ class StreamViewer {
         
         if (confirm(`모든 캡처 이미지 ${captures.length}개를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
             try {
-                localStorage.removeItem('streamCaptures');
-                this.updateCaptureCount();
-                this.showAlert(`모든 캡처 이미지 ${captures.length}개가 삭제되었습니다.`, 'success');
-                console.log('🗑️ 모든 캡처 이미지 삭제 완료:', captures.length, '개');
+                const result = await window.captureStorage.clearAllCaptures();
+                if (result.success) {
+                    this.updateCaptureCount();
+                    this.showAlert(`모든 캡처 이미지 ${captures.length}개가 삭제되었습니다.`, 'success');
+                    console.log('🗑️ 모든 캡처 이미지 삭제 완료:', captures.length, '개');
+                } else {
+                    this.showAlert('캡처 이미지 삭제에 실패했습니다.', 'error');
+                }
             } catch (error) {
                 console.error('캡처 이미지 전체 삭제 실패:', error);
                 this.showAlert('캡처 이미지 삭제에 실패했습니다.', 'error');
@@ -1955,13 +1978,10 @@ class StreamViewer {
         }
     }
     
-    // 로컬스토리지에 캡처 데이터 저장
+    // 로컬스토리지에 캡처 데이터 저장 (captureStorage API 사용)
     async saveCaptureToStorage(captureData) {
         try {
-            console.log('💾 로컬스토리지에 캡처 데이터 저장 시작...');
-            
-            // 기존 캡처 목록 로드
-            let captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
+            console.log('💾 캡처 데이터 저장 시작...');
             
             // 서버 파일 정보 추가
             if (captureData.serverFile) {
@@ -1969,20 +1989,28 @@ class StreamViewer {
                 console.log('📄 서버 파일명 저장:', captureData.serverFile);
             }
             
-            // 새 캡처 데이터 추가
-            captures.unshift(captureData); // 최신 데이터를 맨 앞에 추가
+            // captureStorage API를 통해 저장 (자동 용량 관리 포함)
+            const result = await window.captureStorage.saveCapture(captureData);
             
-            // 최대 100개까지만 저장 (용량 관리)
-            if (captures.length > 100) {
-                captures = captures.slice(0, 100);
-                console.log('📦 캡처 목록이 100개를 초과하여 오래된 데이터를 제거했습니다.');
+            if (result.success) {
+                console.log(`✅ 캡처 저장 완료: ID ${captureData.id}`);
+                
+                // 저장소 상태 확인
+                const status = window.captureStorage.getStorageStatus();
+                console.log(`📊 저장소 사용률: ${status.usagePercent}% (${status.captureCount}개 캡처)`);
+                
+                if (result.warning) {
+                    console.warn(`⚠️ ${result.warning}`);
+                }
+                
+                if (status.isNearLimit) {
+                    console.warn('⚠️ 저장소 용량이 80% 이상 사용 중입니다.');
+                    this.showAlert('저장 공간이 부족합니다. 오래된 캡처가 자동 삭제될 수 있습니다.', 'warning');
+                }
+            } else {
+                throw new Error(result.error || '저장 실패');
             }
             
-            // 로컬스토리지에 저장
-            localStorage.setItem('streamCaptures', JSON.stringify(captures));
-            
-            console.log(`✅ 로컬스토리지 저장 완료: ID ${captureData.id}`);
-            console.log(`📊 현재 저장된 캡처 수: ${captures.length}개`);
             if (captureData.serverFilename) {
                 console.log(`📂 서버 파일: ${captureData.serverFilename}`);
             }
