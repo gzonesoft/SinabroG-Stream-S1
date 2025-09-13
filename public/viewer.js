@@ -12,7 +12,7 @@ class StreamViewer {
         this.autoCapture = false;
         this.autoCaptureInterval = null;
         this.recentCaptures = [];
-        this.maxRecentCaptures = 3; // 최대 3개까지 표시
+        this.maxRecentCaptures = 5; // 최대 5개까지 표시
         this.init();
     }
     
@@ -850,7 +850,7 @@ class StreamViewer {
         if (captures.length > 0) {
             recentCapturesSection.style.display = 'block';
             
-            // 최신 캡처 3개만 표시
+            // 최신 캡처 5개만 표시
             const recentCaptures = captures.slice(0, this.maxRecentCaptures);
             
             // 캡처 목록 렌더링
@@ -861,7 +861,10 @@ class StreamViewer {
                          onclick="streamViewer.viewCaptureDetail('${capture.id}')"
                          title="클릭하여 크게 보기">
                     <div class="recent-capture-info">
-                        <p class="capture-time">${this.formatCaptureTime(capture.timestamp)}</p>
+                        <p class="capture-time">
+                            ${this.formatCaptureTime(capture.timestamp)}
+                            ${this.getCaptureTypeTag(capture)}
+                        </p>
                         <p class="capture-id">#${capture.id.substring(8, 16)}</p>
                     </div>
                     <div class="recent-capture-actions">
@@ -908,6 +911,31 @@ class StreamViewer {
         } else {
             return date.toLocaleDateString() + ' ' + date.toLocaleTimeString().substring(0, 5);
         }
+    }
+
+    getCaptureTypeTag(capture) {
+        // captureType 확인 또는 overlayData 존재 여부로 판단
+        let type = '';
+        let colorClass = '';
+        
+        if (capture.captureType === 'video_only') {
+            type = '영상';
+            colorClass = 'bg-danger';
+        } else if (capture.captureType === 'with_overlay') {
+            type = '오버';
+            colorClass = 'bg-primary';
+        } else {
+            // captureType이 없는 경우 overlayData로 판단
+            if (capture.overlayData && Object.keys(capture.overlayData).length > 0) {
+                type = '오버';
+                colorClass = 'bg-primary';
+            } else {
+                type = '영상';
+                colorClass = 'bg-danger';
+            }
+        }
+        
+        return `<span class="badge ${colorClass} ms-1" style="font-size: 0.6rem; padding: 2px 4px;">${type}</span>`;
     }
 
     // 캡처 상세 보기
@@ -1304,7 +1332,18 @@ class StreamViewer {
         }
     }
 
-    // 화면 캡처 기능 (비디오 + 오버레이 완전 캡처)
+    /**
+     * 오버레이 포함 캡처 (captureVideoFrame)
+     * ====================================
+     * 화면에 표시되는 모든 요소를 포함하여 캡처
+     * - 비디오 프레임
+     * - 서비스명 오버레이 (좌상단)
+     * - 시간/날짜 오버레이 (우하단)
+     * - 센서 데이터 오버레이 (있는 경우)
+     * 
+     * 용도: 실제 화면과 동일한 이미지가 필요한 경우
+     * 호출: captureWithOverlay() -> captureVideoFrame()
+     */
     async captureVideoFrame() {
         try {
             // 비디오 컨테이너 찾기 (오버레이 포함된 전체 컨테이너)
@@ -1452,7 +1491,17 @@ class StreamViewer {
             // 현재 화면의 모든 오버레이 정보 수집
             const overlayData = this.collectOverlayData();
             
-            // 캡처 데이터 생성
+            // 현재 위치 데이터 가져오기
+            let positionData = null;
+            try {
+                const response = await fetch('/api/overlay-data');
+                positionData = await response.json();
+                console.log('📍 캡처 시점의 위치 데이터:', positionData);
+            } catch (error) {
+                console.warn('위치 데이터 가져오기 실패:', error);
+            }
+            
+            // 캡처 데이터 생성 (오버레이 포함)
             const captureData = {
                 id: this.generateCaptureId(),
                 dataUrl: dataUrl,
@@ -1460,9 +1509,10 @@ class StreamViewer {
                 streamKey: this.currentStreamKey || 'unknown',
                 width: finalCanvas.width,
                 height: finalCanvas.height,
-                overlayData: overlayData,
-                captureType: 'video_overlay_composite',
-                captureNote: '비디오 + 오버레이 완전 합성 캡처',
+                overlayData: overlayData,        // ✅ 오버레이 데이터 포함
+                positionData: positionData,      // ✅ 위치 데이터 포함
+                captureType: 'with_overlay',     // 오버레이 포함 타입
+                captureNote: '화면 전체 캡처 (비디오 + 오버레이)',
                 captureMethod: 'canvas_composite'
             };
 
@@ -1484,6 +1534,135 @@ class StreamViewer {
         } catch (error) {
             console.error('비디오 캡처 실패:', error);
             this.showAlert('화면 캡처에 실패했습니다: ' + error.message, 'error');
+            throw error;
+        }
+    }
+
+    /**
+     * 영상만 캡처 (captureVideoOnly)
+     * ================================
+     * 순수 비디오 프레임만 캡처 (오버레이 제외)
+     * - 비디오 프레임만 추출
+     * - 오버레이 요소 모두 제외
+     * - 위치 데이터는 메타데이터로만 포함
+     * 
+     * 용도: 원본 영상만 필요한 경우
+     * 호출: captureVideoOnly() -> captureVideoOnly()
+     */
+    async captureVideoOnly() {
+        try {
+            const video = document.querySelector('video');
+            
+            if (!video) {
+                throw new Error('비디오 요소를 찾을 수 없습니다.');
+            }
+
+            console.log('📸 비디오만 캡처 시작 (오버레이 제외)...');
+            console.log('🎥 비디오 상태:', {
+                readyState: video.readyState,
+                videoWidth: video.videoWidth,
+                videoHeight: video.videoHeight,
+                currentTime: video.currentTime,
+                paused: video.paused
+            });
+            
+            // 비디오가 재생 중인지 확인
+            if (video.readyState < 2) {
+                throw new Error('비디오가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.');
+            }
+            
+            if (video.videoWidth === 0 || video.videoHeight === 0) {
+                throw new Error('비디오 크기 정보를 가져올 수 없습니다.');
+            }
+            
+            // 고화질 캡처를 위한 스케일 설정
+            const scale = 2;
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth * scale;
+            canvas.height = video.videoHeight * scale;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // 배경을 검은색으로 설정
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 비디오만 캔버스에 그리기 (고화질 스케일 적용)
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // 캔버스를 압축된 이미지 데이터로 변환
+            let dataUrl;
+            const canvasArea = canvas.width * canvas.height;
+            
+            if (canvasArea > 1920 * 1080) {
+                // 고해상도는 JPEG 80% 품질로 압축
+                dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                console.log('📊 고해상도 이미지 JPEG 80% 압축 적용');
+            } else if (canvasArea > 1280 * 720) {
+                // 중간 해상도는 JPEG 90% 품질
+                dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                console.log('📊 중간해상도 이미지 JPEG 90% 압축 적용');
+            } else {
+                // 낮은 해상도는 PNG로 유지
+                dataUrl = canvas.toDataURL('image/png', 1.0);
+                console.log('📊 저해상도 이미지 PNG 최고품질 유지');
+            }
+            
+            // 압축 후 크기 확인
+            const compressedSizeKB = Math.round((dataUrl.length * 0.75) / 1024);
+            console.log(`📊 압축된 이미지 크기: ${compressedSizeKB}KB`);
+            
+            // 너무 큰 이미지인 경우 추가 압축
+            if (compressedSizeKB > 5120) { // 5MB 이상
+                console.warn('⚠️ 이미지가 너무 큽니다. 추가 압축을 진행합니다.');
+                dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                const finalSizeKB = Math.round((dataUrl.length * 0.75) / 1024);
+                console.log(`📊 추가 압축 후 크기: ${finalSizeKB}KB`);
+            }
+            
+            // 현재 위치 데이터 가져오기
+            let positionData = null;
+            try {
+                const response = await fetch('/api/overlay-data');
+                positionData = await response.json();
+                console.log('📍 캡처 시점의 위치 데이터:', positionData);
+            } catch (error) {
+                console.warn('위치 데이터 가져오기 실패:', error);
+            }
+            
+            // 캡처 데이터 생성 (영상만)
+            const captureData = {
+                id: this.generateCaptureId(),
+                dataUrl: dataUrl,
+                timestamp: new Date().toISOString(),
+                streamKey: this.currentStreamKey || 'unknown',
+                width: canvas.width,
+                height: canvas.height,
+                overlayData: null,               // ❌ 오버레이 데이터 없음
+                positionData: positionData,      // ✅ 위치 데이터는 메타데이터로 포함
+                captureType: 'video_only',       // 영상만 타입
+                captureNote: '원본 영상 캡처 (오버레이 제외)',
+                captureMethod: 'canvas_direct'
+            };
+
+            // 서버에 저장
+            await this.saveCaptureToServer(captureData);
+
+            // 성공 알림
+            this.showAlert('영상 캡처 성공! (오버레이 제외)', 'success');
+
+            // 캡처 효과 (화면 플래시)
+            this.showCaptureEffect();
+
+            console.log('✅ 비디오만 캡처 완료:', captureData.id);
+            console.log('📊 비디오 해상도:', `${canvas.width}x${canvas.height}`);
+            console.log('📊 최종 파일 크기:', `${compressedSizeKB}KB`);
+            
+            return captureData;
+
+        } catch (error) {
+            console.error('비디오 캡처 실패:', error);
+            this.showAlert('영상 캡처에 실패했습니다: ' + error.message, 'error');
             throw error;
         }
     }
@@ -2212,18 +2391,57 @@ function setServiceName() {
     }
 }
 
-// 화면 캡처 함수 (전역)
-async function captureFrame() {
+// ============================================================
+// 캡처 기능 - 두 가지 모드로 구분
+// ============================================================
+
+/**
+ * 영상만 캡처 (오버레이 제외)
+ * - 비디오 프레임만 캡처
+ * - 오버레이(시간, 서비스명, 센서 데이터) 제외
+ * - 원본 영상만 필요할 때 사용
+ */
+async function captureVideoOnly() {
     if (!streamViewer) {
         alert('스트림 뷰어가 초기화되지 않았습니다.');
         return;
     }
 
     try {
-        await streamViewer.captureVideoFrame();
+        await streamViewer.captureVideoOnly();
     } catch (error) {
-        console.error('캡처 실행 실패:', error);
+        console.error('영상 캡처 실패:', error);
+        alert('영상 캡처에 실패했습니다: ' + error.message);
     }
+}
+
+/**
+ * 오버레이 포함 캡처
+ * - 화면에 보이는 모든 요소 캡처
+ * - 비디오 + 오버레이(시간, 서비스명, 센서 데이터) 포함
+ * - 실제 화면과 동일한 이미지가 필요할 때 사용
+ */
+async function captureWithOverlay() {
+    if (!streamViewer) {
+        alert('스트림 뷰어가 초기화되지 않았습니다.');
+        return;
+    }
+
+    try {
+        await streamViewer.captureVideoFrame(); // 오버레이 포함 캡처 메서드
+    } catch (error) {
+        console.error('오버레이 캡처 실패:', error);
+        alert('오버레이 캡처에 실패했습니다: ' + error.message);
+    }
+}
+
+/**
+ * 화면 캡처 함수 (전역) - 기존 호환성 유지
+ * @deprecated captureWithOverlay() 사용 권장
+ */
+async function captureFrame() {
+    // 기본적으로 오버레이 포함 캡처
+    return captureWithOverlay();
 }
 
 // 캡처 갤러리 열기

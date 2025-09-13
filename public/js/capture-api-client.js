@@ -16,9 +16,9 @@ const API_HEADERS = {
 
 // localStorage 관리 설정
 const STORAGE_CONFIG = {
-    MAX_SIZE: 4.5 * 1024 * 1024, // 4.5MB (5MB 제한의 90%)
-    MAX_CAPTURES: 100, // 최대 캡처 개수
-    MIN_FREE_SPACE: 500 * 1024 // 최소 여유 공간 500KB
+    MAX_SIZE: 4.9 * 1024 * 1024, // 4.9MB (5MB 제한의 98%)
+    MAX_CAPTURES: 999999, // 개수 제한 사실상 없음
+    MIN_FREE_SPACE: 100 * 1024 // 최소 여유 공간 100KB
 };
 
 /**
@@ -26,13 +26,19 @@ const STORAGE_CONFIG = {
  */
 class StorageQuotaManager {
     /**
-     * localStorage 사용량 계산
+     * localStorage 사용량 계산 (캡처 관련 키만)
      */
     static calculateStorageSize() {
         let totalSize = 0;
-        for (let key in localStorage) {
+        // 캡처 관련 키만 계산
+        const captureKeys = ['streamCaptures', 'captureData', 'dronePositionHistory'];
+        
+        for (let key of captureKeys) {
             if (localStorage.hasOwnProperty(key)) {
-                totalSize += localStorage[key].length + key.length;
+                const value = localStorage.getItem(key);
+                if (value) {
+                    totalSize += value.length + key.length;
+                }
             }
         }
         return totalSize * 2; // UTF-16 인코딩 고려 (각 문자 2바이트)
@@ -47,7 +53,7 @@ class StorageQuotaManager {
     }
 
     /**
-     * 가장 오래된 캡처 삭제
+     * 가장 오래된 캡처 삭제 (용량 부족시에만)
      */
     static deleteOldestCaptures(count = 1) {
         const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
@@ -65,59 +71,88 @@ class StorageQuotaManager {
         const remaining = captures.slice(deleteCount);
         
         localStorage.setItem('streamCaptures', JSON.stringify(remaining));
-        console.log(`오래된 캡처 ${deleteCount}개 삭제됨`);
+        console.log(`용량 부족으로 오래된 캡처 ${deleteCount}개 삭제 (${remaining.length}개 유지)`);
         return deleteCount;
     }
 
     /**
-     * 저장 공간 확보
+     * 저장 공간 확보 (용량 기반만)
      */
     static ensureStorageSpace(requiredSize) {
         const currentSize = this.calculateStorageSize();
         const availableSpace = STORAGE_CONFIG.MAX_SIZE - currentSize;
 
+        console.log(`📊 현재: ${(currentSize / 1024 / 1024).toFixed(2)}MB, 필요: ${(requiredSize / 1024 / 1024).toFixed(2)}MB, 여유: ${(availableSpace / 1024 / 1024).toFixed(2)}MB`);
+
+        // 여유 공간이 충분하면 OK
         if (availableSpace >= requiredSize + STORAGE_CONFIG.MIN_FREE_SPACE) {
-            return true; // 충분한 공간
+            return true;
         }
 
-        // 공간 부족 - 오래된 캡처 삭제
+        // 공간 부족시 오래된 캡처 삭제
         const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
         if (captures.length === 0) {
-            console.warn('삭제할 캡처가 없음 - 저장 공간 부족');
-            return false;
+            // 캡처가 없지만 공간이 부족한 경우, 다른 데이터 정리
+            console.warn('캡처 데이터가 없지만 공간 부족 - 다른 캐시 데이터 정리');
+            
+            // dronePositionHistory 정리
+            const positionHistory = localStorage.getItem('dronePositionHistory');
+            if (positionHistory && positionHistory.length > 10000) {
+                try {
+                    const positions = JSON.parse(positionHistory);
+                    // 최근 50개만 유지
+                    const recentPositions = positions.slice(-50);
+                    localStorage.setItem('dronePositionHistory', JSON.stringify(recentPositions));
+                    console.log('위치 기록 정리 완료');
+                } catch (e) {
+                    localStorage.removeItem('dronePositionHistory');
+                    console.log('위치 기록 삭제 완료');
+                }
+            }
+            
+            // 재계산
+            const newSize = this.calculateStorageSize();
+            const newAvailable = STORAGE_CONFIG.MAX_SIZE - newSize;
+            return newAvailable >= requiredSize + STORAGE_CONFIG.MIN_FREE_SPACE;
         }
 
         // 필요한 공간을 확보할 때까지 삭제
         let deletedCount = 0;
-        while (this.calculateStorageSize() + requiredSize > STORAGE_CONFIG.MAX_SIZE - STORAGE_CONFIG.MIN_FREE_SPACE) {
+        let maxIterations = 10; // 무한 루프 방지
+        
+        while (maxIterations-- > 0) {
+            const currentStorageSize = this.calculateStorageSize();
+            if (currentStorageSize + requiredSize <= STORAGE_CONFIG.MAX_SIZE - STORAGE_CONFIG.MIN_FREE_SPACE) {
+                break; // 충분한 공간 확보됨
+            }
+            
             const deleted = this.deleteOldestCaptures(5); // 5개씩 삭제
             if (deleted === 0) {
                 console.error('더 이상 삭제할 캡처가 없음');
-                return false;
+                break;
             }
             deletedCount += deleted;
-            
-            if (deletedCount > STORAGE_CONFIG.MAX_CAPTURES / 2) {
-                console.warn('너무 많은 캡처 삭제됨 - 중단');
-                return false;
-            }
         }
 
-        console.log(`공간 확보를 위해 ${deletedCount}개 캡처 삭제`);
-        return true;
+        if (deletedCount > 0) {
+            console.log(`공간 확보를 위해 ${deletedCount}개 캡처 삭제`);
+        }
+        
+        // 최종 확인
+        const finalSize = this.calculateStorageSize();
+        const finalAvailable = STORAGE_CONFIG.MAX_SIZE - finalSize;
+        return finalAvailable >= requiredSize;
     }
 
     /**
-     * 캡처 개수 제한 확인
+     * 캡처 개수 제한 확인 (사실상 비활성화)
      */
     static checkCaptureLimit() {
+        // 개수 제한 없음 - 용량만 체크
         const captures = JSON.parse(localStorage.getItem('streamCaptures') || '[]');
-        if (captures.length >= STORAGE_CONFIG.MAX_CAPTURES) {
-            // 최대 개수 초과 - 가장 오래된 것 삭제
-            const deleteCount = Math.ceil(STORAGE_CONFIG.MAX_CAPTURES * 0.1); // 10% 삭제
-            this.deleteOldestCaptures(deleteCount);
-            console.log(`캡처 개수 제한 초과 - ${deleteCount}개 삭제`);
-        }
+        console.log(`📸 현재 캡처 개수: ${captures.length}개`);
+        // 개수 제한 없이 용량만 관리
+        return;
     }
 
     /**
@@ -176,7 +211,7 @@ class CaptureStorageAdapter {
                 const data = await response.json();
 
                 // localStorage 형식으로 변환
-                return data.map(item => ({
+                const captures = data.map(item => ({
                     id: item.capture_id,
                     timestamp: new Date(item.timestamp).getTime(),
                     imageData: item.image_url, // API는 URL 반환
@@ -191,6 +226,11 @@ class CaptureStorageAdapter {
                     description: item.description,
                     tags: item.tags || []
                 }));
+                
+                // 최신순 정렬 (timestamp 기준 내림차순)
+                captures.sort((a, b) => b.timestamp - a.timestamp);
+                
+                return captures;
             } catch (error) {
                 console.error('API 조회 실패, localStorage 사용:', error);
                 this.useAPI = false;
@@ -202,6 +242,14 @@ class CaptureStorageAdapter {
         if (streamKey) {
             captures = captures.filter(c => c.streamKey === streamKey);
         }
+        
+        // 최신순 정렬 (timestamp 기준 내림차순)
+        captures.sort((a, b) => {
+            const timeA = new Date(a.timestamp).getTime();
+            const timeB = new Date(b.timestamp).getTime();
+            return timeB - timeA; // 최신이 먼저 (내림차순)
+        });
+        
         return captures;
     }
 
@@ -217,7 +265,7 @@ class CaptureStorageAdapter {
                 return { success: false, error: 'Storage quota exceeded' };
             }
             
-            // 캡처 개수 제한 확인
+            // 캡처 개수 로그만 (제한 없음)
             StorageQuotaManager.checkCaptureLimit();
         }
 

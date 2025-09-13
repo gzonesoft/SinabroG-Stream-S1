@@ -109,10 +109,118 @@
                 카메라 캡처 갤러리
             </h1>
             <p class="lead mb-4">실시간 스트림에서 캡처한 사진들을 관리하세요</p>
+            <div class="d-flex justify-content-center gap-3">
+                <button class="btn btn-warning btn-lg" onclick="togglePositionDataSection()">
+                    <i class="fas fa-database me-2"></i>
+                    로컬/서버 조회
+                    <span class="badge bg-danger ms-2" id="localPositionBadge">0</span>
+                </button>
+                <button class="btn btn-info btn-lg" onclick="window.open('/position-monitor.html', '_blank')">
+                    <i class="fas fa-chart-line me-2"></i>
+                    모니터링
+                </button>
+            </div>
         </div>
     </div>
 
     <div class="container capture-gallery">
+        <!-- 위치 데이터 관리 섹션 -->
+        <div class="position-data-section mb-4" style="display: none;" id="positionDataSection">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <!-- 탭 네비게이션 -->
+                    <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" id="local-tab" data-bs-toggle="tab" data-bs-target="#local-data" type="button" role="tab" style="color: #333;">
+                                <i class="fas fa-database me-2"></i>로컬 스토리지
+                                <span class="badge bg-warning ms-2" id="localTabBadge">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="server-tab" data-bs-toggle="tab" data-bs-target="#server-data" type="button" role="tab" style="color: #fff;">
+                                <i class="fas fa-cloud me-2"></i>서버 조회
+                                <span class="badge bg-info ms-2" id="serverTabBadge">0</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <!-- 탭 컨텐츠 -->
+                    <div class="tab-content">
+                        <!-- 로컬 스토리지 탭 -->
+                        <div class="tab-pane fade show active" id="local-data" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="selectAllPositions()">
+                                <i class="fas fa-check-square me-1"></i>전체 선택
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="deselectAllPositions()">
+                                <i class="fas fa-square me-1"></i>선택 해제
+                            </button>
+                            <button class="btn btn-sm btn-success" onclick="sendSelectedPositions()">
+                                <i class="fas fa-upload me-1"></i>선택 항목 전송
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteSelectedPositions()">
+                                <i class="fas fa-trash me-1"></i>선택 항목 삭제
+                            </button>
+                        </div>
+                        <button class="btn btn-sm btn-info" onclick="refreshPositionData()">
+                            <i class="fas fa-sync me-1"></i>새로고침
+                        </button>
+                    </div>
+                    <div class="position-list" id="positionList" style="max-height: 300px; overflow-y: auto;">
+                        <!-- 위치 데이터 목록이 여기에 표시됩니다 -->
+                    </div>
+                        </div>
+                        
+                        <!-- 서버 조회 탭 -->
+                        <div class="tab-pane fade" id="server-data" role="tabpanel">
+                            <div class="server-query-controls mb-3">
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label small">디바이스 ID</label>
+                                        <input type="text" class="form-control form-control-sm" id="serverDeviceId" value="DJI_DEVICE_001" placeholder="디바이스 ID">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small">시작 날짜</label>
+                                        <input type="datetime-local" class="form-control form-control-sm" id="serverStartDate">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small">종료 날짜</label>
+                                        <input type="datetime-local" class="form-control form-control-sm" id="serverEndDate">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small">조회 건수</label>
+                                        <input type="number" class="form-control form-control-sm" id="serverLimit" value="100" min="1" max="1000">
+                                    </div>
+                                </div>
+                                <div class="mt-3 d-flex gap-2 flex-wrap">
+                                    <button class="btn btn-primary" onclick="queryServerPositions()">
+                                        <i class="fas fa-search me-1"></i>조회
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="setTimeRange(1)">
+                                        <i class="fas fa-clock me-1"></i>최근 1시간
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="setTimeRange(6)">
+                                        <i class="fas fa-clock me-1"></i>최근 6시간
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="setTimeRange(24)">
+                                        <i class="fas fa-calendar-day me-1"></i>1일 동안
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="setTimeRange(168)">
+                                        <i class="fas fa-calendar-week me-1"></i>1주일 동안
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="server-position-list" id="serverPositionList" style="max-height: 400px; overflow-y: auto;">
+                                <!-- 서버 조회 결과가 여기에 표시됩니다 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 스트림 제어 패널 -->
         <div class="stream-controls">
             <div class="row align-items-center">
@@ -178,6 +286,9 @@
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="sendPositionDataToServer()">
+                        <i class="fas fa-cloud-upload-alt me-2"></i>서버 전송
+                    </button>
                     <button type="button" class="btn btn-success" onclick="downloadCurrentImage()">
                         <i class="fas fa-download me-2"></i>다운로드
                     </button>
@@ -187,6 +298,18 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- 임시 작업 버튼 섹션 -->
+    <div class="container mt-5">
+        <div class="alert alert-warning">
+            <h5><i class="fas fa-tools me-2"></i>임시 작업 도구</h5>
+            <button class="btn btn-danger btn-lg mt-2" onclick="syncFromServerFiles()">
+                <i class="fas fa-sync-alt me-2"></i>
+                서버 파일(9/13)로 로컬스토리지 재생성
+            </button>
+            <p class="small mt-2 mb-0">⚠️ 주의: 현재 로컬스토리지의 모든 캡처 데이터가 서버 파일로 교체됩니다.</p>
         </div>
     </div>
 
@@ -206,6 +329,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="/js/capture-api-client.js"></script>
     <script src="/js/capture-api-config.js"></script>
+    <script src="/js/position-api-client.js"></script>
+    <script src="/js/position-api-config.js"></script>
     <script>
         class CameraGallery {
             constructor() {
@@ -230,6 +355,31 @@
                     console.error('날짜 포맷팅 오류:', error);
                 }
                 return '알 수 없음';
+            }
+
+            getCaptureTypeTag(capture) {
+                // captureType 확인 또는 overlayData 존재 여부로 판단
+                let type = '';
+                let colorClass = '';
+                
+                if (capture.captureType === 'video_only') {
+                    type = '영상';
+                    colorClass = 'bg-danger';
+                } else if (capture.captureType === 'with_overlay') {
+                    type = '오버';
+                    colorClass = 'bg-primary';
+                } else {
+                    // captureType이 없는 경우 overlayData로 판단
+                    if (capture.overlayData && Object.keys(capture.overlayData).length > 0) {
+                        type = '오버';
+                        colorClass = 'bg-primary';
+                    } else {
+                        type = '영상';
+                        colorClass = 'bg-danger';
+                    }
+                }
+                
+                return `<span class="badge ${colorClass} ms-2" style="font-size: 0.7rem;">${type}</span>`;
             }
 
             async init() {
@@ -302,7 +452,7 @@
                     <div class="col-md-4 col-lg-3">
                         <div class="card capture-item">
                             <div class="capture-preview" onclick="showImageDetail('${capture.id}')">
-                                <img src="${capture.dataUrl}" alt="캡처 ${index + 1}">
+                                <img src="${capture.dataUrl || capture.imageUrl || capture.imageData || ''}" alt="캡처 ${index + 1}">
                                 <div class="capture-overlay">
                                     <div class="text-white">
                                         <small><i class="fas fa-clock me-1"></i>${new Date(capture.timestamp).toLocaleString()}</small>
@@ -313,6 +463,7 @@
                                 <h6 class="card-title mb-2">
                                     <i class="fas fa-camera me-1"></i>
                                     캡처 #${index + 1}
+                                    ${this.getCaptureTypeTag(capture)}
                                 </h6>
                                 <p class="card-text">
                                     <small class="text-muted">
@@ -405,26 +556,58 @@
                     
                     this.showAlert('위치정보 기반 파일명으로 다운로드됩니다.', 'success');
                 } else {
-                    // 로컬 스토리지의 캡처는 기존 방식 사용
-                    // timestamp가 숫자인지 확인하고 Date 객체로 변환
+                    // 로컬 스토리지의 캡처 - 위치 정보 기반 파일명 생성
+                    let downloadFilename = '';
+                    
+                    // 위치 데이터 추출 (showImageDetail과 동일한 로직)
+                    let positionData = null;
+                    
+                    // 1. positionData 직접 확인
+                    if (capture.positionData && capture.positionData.LATITUDE) {
+                        positionData = capture.positionData;
+                    }
+                    // 2. overlayData 직접 확인
+                    else if (capture.overlayData && capture.overlayData.LATITUDE) {
+                        positionData = capture.overlayData;
+                    }
+                    // 3. overlayData.sensorData 확인
+                    else if (capture.overlayData?.sensorData?.LATITUDE) {
+                        positionData = capture.overlayData.sensorData;
+                    }
+                    // 4. overlayData.userScreenData.sensorData 확인
+                    else if (capture.overlayData?.userScreenData?.sensorData?.LATITUDE) {
+                        positionData = capture.overlayData.userScreenData.sensorData;
+                    }
+                    
+                    // 타임스탬프 처리
                     let timestamp = capture.timestamp;
                     if (typeof timestamp === 'string' || typeof timestamp === 'number') {
                         timestamp = new Date(timestamp);
                     }
                     
-                    // 유효한 날짜인지 확인
-                    let dateStr = '';
-                    if (timestamp instanceof Date && !isNaN(timestamp)) {
-                        dateStr = timestamp.toISOString().slice(0, 19).replace(/:/g, '-');
+                    // KST 시간으로 변환
+                    const kstDate = new Date(timestamp.getTime() + (9 * 60 * 60 * 1000));
+                    const dateStr = kstDate.toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '');
+                    
+                    // 위치 정보가 있으면 위치 기반 파일명 생성
+                    if (positionData && positionData.LATITUDE && positionData.LONGITUDE) {
+                        const latitude = parseFloat(positionData.LATITUDE).toFixed(6);
+                        const longitude = parseFloat(positionData.LONGITUDE).toFixed(6);
+                        const altitude = Math.round(parseFloat(positionData.ALTITUDE || 0));
+                        
+                        // 서버와 동일한 파일명 형식: 날짜_위도_경도_고도
+                        downloadFilename = `${dateStr}_${latitude}_${longitude}_${altitude}m.png`;
                     } else {
-                        // 날짜가 유효하지 않으면 현재 시간 사용
-                        dateStr = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                        // 위치 정보가 없으면 기본 파일명
+                        downloadFilename = `stream-capture-${capture.streamKey || 'unknown'}-${dateStr}.png`;
                     }
                     
                     const link = document.createElement('a');
-                    link.download = `stream-capture-${capture.streamKey || 'unknown'}-${dateStr}.png`;
+                    link.download = downloadFilename;
                     link.href = capture.dataUrl || capture.imageData;
                     link.click();
+                    
+                    console.log(`📥 다운로드 파일명: ${downloadFilename}`);
                 }
             }
 
@@ -434,9 +617,53 @@
 
                 this.currentImageId = captureId;
                 
-                document.getElementById('modalImage').src = capture.dataUrl || capture.imageData || '';
+                document.getElementById('modalImage').src = capture.dataUrl || capture.imageUrl || capture.imageData || '';
+                
+                // 위치 데이터 확인 - 여러 경로 시도
+                let positionData = null;
+                
+                // 1. positionData 직접 확인
+                if (capture.positionData && capture.positionData.LATITUDE) {
+                    positionData = capture.positionData;
+                }
+                // 2. overlayData 직접 확인
+                else if (capture.overlayData && capture.overlayData.LATITUDE) {
+                    positionData = capture.overlayData;
+                }
+                // 3. overlayData.sensorData 확인
+                else if (capture.overlayData?.sensorData?.LATITUDE) {
+                    positionData = capture.overlayData.sensorData;
+                }
+                // 4. overlayData.userScreenData.sensorData 확인 (서버 API와 동일한 경로)
+                else if (capture.overlayData?.userScreenData?.sensorData?.LATITUDE) {
+                    positionData = capture.overlayData.userScreenData.sensorData;
+                }
+                
+                let positionInfoHtml = '';
+                
+                if (positionData && positionData.LATITUDE && positionData.LONGITUDE) {
+                    // 숫자로 변환하여 toFixed 사용
+                    const lat = parseFloat(positionData.LATITUDE);
+                    const lng = parseFloat(positionData.LONGITUDE);
+                    const alt = parseFloat(positionData.ALTITUDE) || 0;
+                    
+                    positionInfoHtml = `
+                        <div class="col-md-12 mb-3">
+                            <h6><i class="fas fa-map-marker-alt me-2"></i>위치 정보</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>위도:</strong> ${lat.toFixed(6)}°</li>
+                                <li><strong>경도:</strong> ${lng.toFixed(6)}°</li>
+                                <li><strong>고도:</strong> ${alt.toFixed(1)}m</li>
+                                ${positionData.SPEED ? `<li><strong>속도:</strong> ${parseFloat(positionData.SPEED).toFixed(1)}km/h</li>` : ''}
+                                ${positionData.BATTERY_LEVEL ? `<li><strong>배터리:</strong> ${Math.round(parseFloat(positionData.BATTERY_LEVEL))}%</li>` : ''}
+                            </ul>
+                        </div>
+                    `;
+                }
+                
                 document.getElementById('imageInfo').innerHTML = `
                     <div class="row text-start">
+                        ${positionInfoHtml}
                         <div class="col-md-6">
                             <h6><i class="fas fa-info-circle me-2"></i>캡처 정보</h6>
                             <ul class="list-unstyled">
@@ -543,6 +770,39 @@
         // 페이지 로드시 초기화
         document.addEventListener('DOMContentLoaded', () => {
             cameraGallery = new CameraGallery();
+            positionDataManager.init();
+            
+            // 날짜 입력 필드 초기값 설정 - 로컬 시간 기준
+            const now = new Date();
+            const yesterday = new Date(now.getTime() - 24*60*60*1000);
+            
+            // 로컬 시간을 datetime-local 형식으로 변환
+            const formatLocalDateTime = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+            };
+            
+            document.getElementById('serverStartDate').value = formatLocalDateTime(yesterday);
+            document.getElementById('serverEndDate').value = formatLocalDateTime(now);
+            
+            // 탭 전환 시 색상 변경 및 데이터 로드
+            document.getElementById('local-tab').addEventListener('shown.bs.tab', function() {
+                this.style.color = '#333';
+                document.getElementById('server-tab').style.color = '#fff';
+                // 로컬 스토리지 데이터 다시 로드
+                positionDataManager.loadPositions();
+            });
+            
+            document.getElementById('server-tab').addEventListener('shown.bs.tab', function() {
+                this.style.color = '#333';
+                document.getElementById('local-tab').style.color = '#fff';
+                // 서버 탭이 선택되면 자동으로 조회 (선택사항)
+                // queryServerPositions();
+            });
         });
 
         // 전역 함수들
@@ -566,8 +826,471 @@
             await cameraGallery.deleteCapture(id);
         }
 
+        // 서버로 위치 데이터 전송 함수 (캡처 이미지 팝업용)
+        async function sendPositionDataToServer() {
+            try {
+                // 현재 팝업에 표시된 캡처 이미지의 데이터 가져오기
+                const currentImageId = cameraGallery.currentImageId;
+                if (!currentImageId) {
+                    alert('❌ 선택된 이미지가 없습니다.');
+                    return;
+                }
+
+                const capture = cameraGallery.captures.find(c => c.id === currentImageId);
+                if (!capture) {
+                    alert('❌ 캡처 데이터를 찾을 수 없습니다.');
+                    return;
+                }
+
+                // 디버깅: 캡처 데이터 구조 확인
+                console.log('캡처 데이터 전체:', capture);
+                console.log('positionData:', capture.positionData);
+                console.log('overlayData:', capture.overlayData);
+                
+                // 캡처 데이터에 포함된 위치 정보 확인 - 여러 경로 시도
+                let positionData = null;
+                
+                // 1. positionData 직접 확인
+                if (capture.positionData && capture.positionData.LATITUDE) {
+                    positionData = capture.positionData;
+                    console.log('positionData에서 위치 정보 발견');
+                }
+                // 2. overlayData 직접 확인
+                else if (capture.overlayData && capture.overlayData.LATITUDE) {
+                    positionData = capture.overlayData;
+                    console.log('overlayData에서 위치 정보 발견');
+                }
+                // 3. overlayData.sensorData 확인
+                else if (capture.overlayData?.sensorData?.LATITUDE) {
+                    positionData = capture.overlayData.sensorData;
+                    console.log('overlayData.sensorData에서 위치 정보 발견');
+                }
+                // 4. overlayData.userScreenData.sensorData 확인 (서버 API와 동일한 경로)
+                else if (capture.overlayData?.userScreenData?.sensorData?.LATITUDE) {
+                    positionData = capture.overlayData.userScreenData.sensorData;
+                    console.log('overlayData.userScreenData.sensorData에서 위치 정보 발견');
+                }
+                
+                if (!positionData || !positionData.LATITUDE || !positionData.LONGITUDE) {
+                    console.error('위치 데이터 없음:', { capture, positionData });
+                    alert('❌ 이 캡처에 위치 데이터가 없습니다.');
+                    return;
+                }
+
+                // 위치 데이터 전송
+                console.log('📍 캡처 이미지의 위치 데이터 전송:', positionData);
+                
+                // 알림 표시
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-info alert-dismissible fade show position-fixed';
+                alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+                alertDiv.innerHTML = `
+                    <strong>📍 위치 데이터 전송 중...</strong><br>
+                    위도: ${parseFloat(positionData.LATITUDE).toFixed(6)}<br>
+                    경도: ${parseFloat(positionData.LONGITUDE).toFixed(6)}<br>
+                    고도: ${parseFloat(positionData.ALTITUDE || 0).toFixed(1)}m
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.body.appendChild(alertDiv);
+
+                // 서버 API를 통한 직접 전송 (JWT 인증 우회)
+                const positionResponse = await fetch('/api/position-history', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        device_id: positionData.DEVICE_ID || 'DJI_DEVICE_001',
+                        latitude: parseFloat(positionData.LATITUDE),
+                        longitude: parseFloat(positionData.LONGITUDE),
+                        altitude: parseFloat(positionData.ALTITUDE || 0),
+                        speed: parseFloat(positionData.SPEED || 0),
+                        heading: parseFloat(positionData.AZIMUTH || 0),
+                        battery_level: positionData.BATTERY_LEVEL ? parseFloat(positionData.BATTERY_LEVEL) : null,
+                        timestamp: capture.timestamp || positionData.TIME || positionData.timestamp || null,
+                        metadata: {
+                            ...positionData,
+                            capture_id: capture.id,
+                            capture_time: capture.timestamp
+                        }
+                    })
+                });
+
+                const result = await positionResponse.json();
+                
+                // 결과에 따라 알림 업데이트
+                setTimeout(() => {
+                    if (result.success) {
+                        alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+                        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+                        alertDiv.innerHTML = `
+                            <strong>✅ 위치 데이터 전송 완료!</strong><br>
+                            디바이스: ${result.device_id || 'Unknown'}<br>
+                            <small>${result.message || '데이터가 성공적으로 저장되었습니다.'}</small>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                    } else {
+                        alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed';
+                        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+                        alertDiv.innerHTML = `
+                            <strong>❌ 위치 데이터 전송 실패!</strong><br>
+                            오류: ${result.error}<br>
+                            <small>다시 시도해주세요</small>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                    }
+                    
+                    // 8초 후 자동 삭제
+                    setTimeout(() => {
+                        if (alertDiv.parentNode) {
+                            alertDiv.remove();
+                        }
+                    }, 8000);
+                }, 1000);
+
+                // Position API 통계 출력
+                const stats = window.positionAPI.getStats();
+                console.log('📊 Position API 통계:', stats);
+
+            } catch (error) {
+                console.error('위치 데이터 전송 실패:', error);
+                alert(`❌ 위치 데이터 전송 실패: ${error.message}`);
+            }
+        }
+
         function showImageDetail(id) {
             cameraGallery.showImageDetail(id);
+        }
+
+        // 위치 데이터 관리 함수들
+        let positionDataManager = {
+            positions: [],
+            selectedPositions: new Set(),
+            
+            init() {
+                this.loadPositions();
+                this.updateBadgeCount();
+            },
+            
+            loadPositions() {
+                // 메인 갤러리와 동일한 방식으로 캡처 데이터에서 위치 정보 추출
+                this.positions = [];
+                
+                // streamCaptures에서 위치 데이터 추출 (메인 갤러리와 동일)
+                const captures = localStorage.getItem('streamCaptures');
+                if (captures) {
+                    try {
+                        const captureData = JSON.parse(captures);
+                        captureData.forEach((capture, index) => {
+                            // 메인 갤러리와 동일한 경로로 위치 데이터 확인
+                            let posData = null;
+                            
+                            // 1. positionData 직접 확인
+                            if (capture.positionData && capture.positionData.LATITUDE) {
+                                posData = capture.positionData;
+                            }
+                            // 2. overlayData 직접 확인
+                            else if (capture.overlayData && capture.overlayData.LATITUDE) {
+                                posData = capture.overlayData;
+                            }
+                            // 3. overlayData.sensorData 확인
+                            else if (capture.overlayData?.sensorData?.LATITUDE) {
+                                posData = capture.overlayData.sensorData;
+                            }
+                            // 4. overlayData.userScreenData.sensorData 확인
+                            else if (capture.overlayData?.userScreenData?.sensorData?.LATITUDE) {
+                                posData = capture.overlayData.userScreenData.sensorData;
+                            }
+                            
+                            if (posData && posData.LATITUDE && posData.LONGITUDE) {
+                                // 캡처 정보도 함께 저장
+                                this.positions.push({
+                                    ...posData,
+                                    captureId: capture.id,
+                                    captureTime: capture.timestamp,
+                                    streamKey: capture.streamKey
+                                });
+                            }
+                        });
+                        console.log(`캡처에서 위치 데이터 추출: ${this.positions.length}개`);
+                    } catch (e) {
+                        console.error('캡처 데이터 파싱 오류:', e);
+                    }
+                }
+                
+                // 기존 dronePositionHistory가 있으면 추가 (하위 호환성)
+                const legacyData = localStorage.getItem('dronePositionHistory');
+                if (legacyData) {
+                    try {
+                        const legacyPositions = JSON.parse(legacyData);
+                        // 중복 제거를 위해 기존 데이터와 비교
+                        legacyPositions.forEach(pos => {
+                            const isDuplicate = this.positions.some(p => 
+                                p.LATITUDE === pos.LATITUDE && 
+                                p.LONGITUDE === pos.LONGITUDE && 
+                                p.TIME === pos.TIME
+                            );
+                            if (!isDuplicate) {
+                                this.positions.push(pos);
+                            }
+                        });
+                        console.log(`Legacy 위치 데이터 추가: 총 ${this.positions.length}개`);
+                    } catch (e) {
+                        console.error('Legacy 데이터 파싱 오류:', e);
+                    }
+                }
+                
+                this.renderPositionList();
+                this.updateBadgeCount();
+            },
+            
+            updateBadgeCount() {
+                const count = this.positions.length;
+                document.getElementById('localPositionBadge').textContent = count;
+                document.getElementById('localTabBadge').textContent = count;
+            },
+            
+            renderPositionList() {
+                const listContainer = document.getElementById('positionList');
+                if (!listContainer) return;
+                
+                if (this.positions.length === 0) {
+                    listContainer.innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            저장된 위치 데이터가 없습니다.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const html = this.positions.map((pos, index) => {
+                    // 캡처 시간 우선, 없으면 다른 시간 필드 사용
+                    const time = pos.captureTime || pos.TIME || pos.timestamp || new Date().toISOString();
+                    const date = new Date(time);
+                    const isSelected = this.selectedPositions.has(index);
+                    
+                    return `
+                        <div class="position-item border rounded p-2 mb-2 ${isSelected ? 'bg-light' : ''}" data-index="${index}">
+                            <div class="form-check">
+                                <input class="form-check-input position-checkbox" type="checkbox" 
+                                       value="${index}" id="pos-${index}" 
+                                       ${isSelected ? 'checked' : ''} 
+                                       onchange="positionDataManager.toggleSelection(${index})">
+                                <label class="form-check-label w-100" for="pos-${index}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>${pos.DEVICE_ID || pos.streamKey || 'Unknown'}</strong>
+                                            <small class="text-muted ms-2">
+                                                ${date.toLocaleString('ko-KR')}
+                                            </small>
+                                            ${pos.captureId ? `<small class="text-info ms-1">[캡처]</small>` : ''}
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-map-marker-alt"></i>
+                                                ${parseFloat(pos.LATITUDE || 0).toFixed(4)}, ${parseFloat(pos.LONGITUDE || 0).toFixed(4)}
+                                            </span>
+                                            <span class="badge bg-info ms-1">
+                                                <i class="fas fa-arrow-up"></i>
+                                                ${parseFloat(pos.ALTITUDE || 0).toFixed(1)}m
+                                            </span>
+                                            ${pos.BATTERY_LEVEL ? `
+                                                <span class="badge ${parseFloat(pos.BATTERY_LEVEL) < 30 ? 'bg-danger' : 'bg-success'} ms-1">
+                                                    <i class="fas fa-battery-half"></i>
+                                                    ${Math.round(parseFloat(pos.BATTERY_LEVEL))}%
+                                                </span>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                listContainer.innerHTML = html;
+            },
+            
+            toggleSelection(index) {
+                if (this.selectedPositions.has(index)) {
+                    this.selectedPositions.delete(index);
+                } else {
+                    this.selectedPositions.add(index);
+                }
+                this.renderPositionList();
+            },
+            
+            selectAll() {
+                this.positions.forEach((_, index) => {
+                    this.selectedPositions.add(index);
+                });
+                this.renderPositionList();
+            },
+            
+            deselectAll() {
+                this.selectedPositions.clear();
+                this.renderPositionList();
+            },
+            
+            async sendSelected() {
+                if (this.selectedPositions.size === 0) {
+                    alert('전송할 항목을 선택하세요.');
+                    return;
+                }
+                
+                const selectedData = Array.from(this.selectedPositions).map(index => this.positions[index]);
+                const progressAlert = this.showProgressAlert(`0/${selectedData.length}개 전송 중...`);
+                
+                let successCount = 0;
+                let failCount = 0;
+                
+                for (const [i, position] of selectedData.entries()) {
+                    try {
+                        const response = await fetch('/api/position-history', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                device_id: position.DEVICE_ID || 'DJI_DEVICE_001',
+                                latitude: position.LATITUDE,
+                                longitude: position.LONGITUDE,
+                                altitude: position.ALTITUDE || 0,
+                                speed: position.SPEED || 0,
+                                heading: position.AZIMUTH || 0,
+                                battery_level: position.BATTERY_LEVEL || null,
+                                timestamp: position.TIME || position.timestamp || null,
+                                metadata: position
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        if (result.success) {
+                            successCount++;
+                        } else {
+                            failCount++;
+                        }
+                        
+                        // 진행 상황 업데이트
+                        progressAlert.querySelector('.alert-content').innerHTML = 
+                            `${i + 1}/${selectedData.length}개 전송 중... (성공: ${successCount}, 실패: ${failCount})`;
+                        
+                    } catch (error) {
+                        console.error('전송 오류:', error);
+                        failCount++;
+                    }
+                }
+                
+                // 성공한 항목 제거
+                if (successCount > 0) {
+                    const indicesToRemove = Array.from(this.selectedPositions).sort((a, b) => b - a);
+                    indicesToRemove.forEach(index => {
+                        if (successCount > 0) {
+                            this.positions.splice(index, 1);
+                        }
+                    });
+                    
+                    // localStorage 업데이트
+                    localStorage.setItem('dronePositionHistory', JSON.stringify(this.positions));
+                    this.selectedPositions.clear();
+                    this.loadPositions();
+                }
+                
+                // 결과 알림
+                progressAlert.remove();
+                this.showResultAlert(
+                    `전송 완료: 성공 ${successCount}개, 실패 ${failCount}개`,
+                    successCount > 0 ? 'success' : 'danger'
+                );
+            },
+            
+            deleteSelected() {
+                if (this.selectedPositions.size === 0) {
+                    alert('삭제할 항목을 선택하세요.');
+                    return;
+                }
+                
+                if (!confirm(`선택한 ${this.selectedPositions.size}개 항목을 삭제하시겠습니까?`)) {
+                    return;
+                }
+                
+                // 인덱스를 역순으로 정렬하여 삭제 (배열 인덱스 보존)
+                const indicesToRemove = Array.from(this.selectedPositions).sort((a, b) => b - a);
+                indicesToRemove.forEach(index => {
+                    this.positions.splice(index, 1);
+                });
+                
+                // localStorage 업데이트
+                localStorage.setItem('dronePositionHistory', JSON.stringify(this.positions));
+                this.selectedPositions.clear();
+                this.loadPositions();
+                
+                this.showResultAlert(`${indicesToRemove.length}개 항목이 삭제되었습니다.`, 'warning');
+            },
+            
+            showProgressAlert(message) {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-info alert-dismissible fade show position-fixed';
+                alertDiv.style.cssText = 'top: 80px; right: 20px; z-index: 9999; min-width: 300px;';
+                alertDiv.innerHTML = `
+                    <div class="alert-content">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        ${message}
+                    </div>
+                `;
+                document.body.appendChild(alertDiv);
+                return alertDiv;
+            },
+            
+            showResultAlert(message, type = 'success') {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+                alertDiv.style.cssText = 'top: 80px; right: 20px; z-index: 9999; min-width: 300px;';
+                alertDiv.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.body.appendChild(alertDiv);
+                
+                setTimeout(() => {
+                    if (alertDiv.parentNode) {
+                        alertDiv.remove();
+                    }
+                }, 5000);
+            }
+        };
+        
+        // 전역 함수들
+        function togglePositionDataSection() {
+            const section = document.getElementById('positionDataSection');
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                // 섹션이 열릴 때 로컬 탭이 활성화되어 있으면 데이터 로드
+                if (document.getElementById('local-tab').classList.contains('active')) {
+                    positionDataManager.loadPositions();
+                }
+            } else {
+                section.style.display = 'none';
+            }
+        }
+        
+        function selectAllPositions() {
+            positionDataManager.selectAll();
+        }
+        
+        function deselectAllPositions() {
+            positionDataManager.deselectAll();
+        }
+        
+        function sendSelectedPositions() {
+            positionDataManager.sendSelected();
+        }
+        
+        function deleteSelectedPositions() {
+            positionDataManager.deleteSelected();
+        }
+        
+        function refreshPositionData() {
+            positionDataManager.loadPositions();
         }
 
         function downloadCurrentImage() {
@@ -577,6 +1300,113 @@
         function deleteCurrentImage() {
             cameraGallery.deleteCurrentImage();
         }
+        
+        // 시간 범위 설정 함수
+        function setTimeRange(hours) {
+            const now = new Date();
+            const startDate = new Date(now.getTime() - hours * 60 * 60 * 1000);
+            
+            // 로컬 시간을 datetime-local 형식으로 변환
+            const formatLocalDateTime = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+            };
+            
+            // 날짜 입력 필드 업데이트
+            document.getElementById('serverStartDate').value = formatLocalDateTime(startDate);
+            document.getElementById('serverEndDate').value = formatLocalDateTime(now);
+            
+            // 자동으로 조회 실행
+            queryServerPositions();
+        }
+        
+        // 서버 API 조회 함수들
+        async function queryServerPositions() {
+            const deviceId = document.getElementById('serverDeviceId').value;
+            const startDate = document.getElementById('serverStartDate').value;
+            const endDate = document.getElementById('serverEndDate').value;
+            const limit = document.getElementById('serverLimit').value;
+            
+            if (!deviceId) {
+                alert('디바이스 ID를 입력하세요.');
+                return;
+            }
+            
+            const listContainer = document.getElementById('serverPositionList');
+            listContainer.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div><p>조회 중...</p></div>';
+            
+            try {
+                const response = await fetch('/api/position-history/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        device_id: deviceId,
+                        start_date: startDate ? new Date(startDate).toISOString() : undefined,
+                        end_date: endDate ? new Date(endDate).toISOString() : undefined,
+                        limit: parseInt(limit) || 100
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`서버 응답 오류: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                renderServerPositions(data);
+                document.getElementById('serverTabBadge').textContent = data.length;
+                
+            } catch (error) {
+                console.error('서버 조회 실패:', error);
+                listContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        조회 실패: ${error.message}
+                    </div>`;
+            }
+        }
+        
+        
+        function renderServerPositions(positions) {
+            const listContainer = document.getElementById('serverPositionList');
+            
+            if (!positions || positions.length === 0) {
+                listContainer.innerHTML = '<div class="alert alert-info">조회된 데이터가 없습니다.</div>';
+                return;
+            }
+            
+            let html = '<div class="list-group">';
+            positions.forEach(pos => {
+                const timestamp = new Date(pos.position_timestamp).toLocaleString('ko-KR');
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">${timestamp}</h6>
+                                <p class="mb-1">
+                                    <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                                    위도: ${pos.latitude.toFixed(6)}°, 경도: ${pos.longitude.toFixed(6)}°
+                                </p>
+                                <small class="text-muted">
+                                    고도: ${pos.altitude}m | 속도: ${pos.speed}km/h | 
+                                    방향: ${pos.heading}° | 배터리: ${pos.battery_level}%
+                                    ${pos.distance_from_previous ? ` | 이동거리: ${pos.distance_from_previous.toFixed(2)}m` : ''}
+                                </small>
+                            </div>
+                            <span class="badge bg-primary">#${pos.id}</span>
+                        </div>
+                    </div>`;
+            });
+            html += '</div>';
+            
+            listContainer.innerHTML = html;
+        }
+        
 
         // 외부에서 캡처 데이터를 추가할 수 있는 함수 (watch.html에서 호출용)
         window.addCaptureToGallery = function(captureData) {
@@ -584,6 +1414,126 @@
                 cameraGallery.addCapture(captureData);
             }
         };
+        
+        // 서버 파일로부터 로컬스토리지 재생성 (임시 기능)
+        async function syncFromServerFiles() {
+            if (!confirm('⚠️ 경고: 현재 로컬스토리지의 모든 캡처 데이터가 삭제되고 서버 파일로 교체됩니다.\n계속하시겠습니까?')) {
+                return;
+            }
+            
+            try {
+                // 기존 로컬스토리지 클리어 - captureStorage API와 동일한 키 사용
+                localStorage.removeItem('streamCaptures');
+                localStorage.removeItem('captureData');
+                
+                // 로딩 표시
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-info position-fixed';
+                alertDiv.style.cssText = 'top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; min-width: 300px;';
+                alertDiv.innerHTML = `
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    서버 파일 목록을 가져오는 중...
+                `;
+                document.body.appendChild(alertDiv);
+                
+                // 서버에서 캡처 목록 가져오기
+                const response = await fetch('/api/capture/list');
+                if (!response.ok) {
+                    throw new Error('서버 파일 목록을 가져올 수 없습니다.');
+                }
+                
+                const data = await response.json();
+                let serverCaptures = data.captures || [];
+                
+                // 2025-09-13 파일만 필터링
+                serverCaptures = serverCaptures.filter(cap => cap.filename.includes('2025-09-13'));
+                
+                alertDiv.innerHTML = `
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    ${serverCaptures.length}개 파일 메타데이터 처리 중...
+                `;
+                
+                // 서버 파일 참조만 저장 (이미지 다운로드 하지 않음)
+                const newCaptures = [];
+                let processedCount = 0;
+                
+                // 최대 20개만 처리 (용량 제한)
+                const maxItems = Math.min(serverCaptures.length, 20);
+                
+                for (let i = 0; i < maxItems; i++) {
+                    const serverCapture = serverCaptures[i];
+                    try {
+                        // 캡처 객체 생성 (이미지 URL만 저장)
+                        const captureObj = {
+                            id: 'server_' + serverCapture.filename.replace(/\.[^/.]+$/, ''),
+                            // dataUrl 대신 서버 파일 참조 저장
+                            serverFile: serverCapture.filename,
+                            serverPath: serverCapture.filepath,
+                            imageUrl: `/api/capture/download/${serverCapture.filename}`,
+                            timestamp: serverCapture.createdAt || serverCapture.timestamp || new Date().toISOString(),
+                            streamKey: serverCapture.streamKey || 'ah01',
+                            width: serverCapture.metadata?.width || 1920,
+                            height: serverCapture.metadata?.height || 1080,
+                            serverFilename: serverCapture.filename,
+                            overlayData: serverCapture.metadata?.overlayData || {},
+                            positionData: serverCapture.metadata?.overlayData?.sensorData || null,
+                            syncedFromServer: true,
+                            savedToServer: true
+                        };
+                        
+                        newCaptures.push(captureObj);
+                        processedCount++;
+                        
+                        alertDiv.innerHTML = `
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            처리 중... (${processedCount}/${maxItems})
+                        `;
+                        
+                    } catch (error) {
+                        console.error(`파일 처리 실패: ${serverCapture.filename}`, error);
+                    }
+                }
+                
+                // 최신순 정렬 (timestamp 기준 내림차순)
+                newCaptures.sort((a, b) => {
+                    const timeA = new Date(a.timestamp).getTime();
+                    const timeB = new Date(b.timestamp).getTime();
+                    return timeB - timeA; // 최신이 먼저
+                });
+                
+                // 로컬스토리지에 저장 (이미지 없이 메타데이터만)
+                try {
+                    localStorage.setItem('streamCaptures', JSON.stringify(newCaptures));
+                } catch (e) {
+                    if (e.name === 'QuotaExceededError') {
+                        // 용량 초과시 절반만 저장
+                        const halfCaptures = newCaptures.slice(0, Math.floor(newCaptures.length / 2));
+                        localStorage.setItem('streamCaptures', JSON.stringify(halfCaptures));
+                        alert(`⚠️ 용량 제한으로 ${halfCaptures.length}개만 로드됩니다.`);
+                    }
+                }
+                
+                // 갤러리 새로고침
+                // renderGallery를 호출하면 자동으로 captureStorage API를 통해 로드됨
+                await cameraGallery.renderGallery();
+                
+                alertDiv.remove();
+                
+                // 성공 메시지
+                alert(`✅ 서버 파일 동기화 완료!\n\n총 ${processedCount}개의 캡처를 로드했습니다.`);
+                
+                // 페이지 새로고침
+                location.reload();
+                
+            } catch (error) {
+                console.error('서버 파일 동기화 실패:', error);
+                alert('❌ 동기화 실패: ' + error.message);
+                
+                // 로딩 표시 제거
+                const alertDiv = document.querySelector('.alert.position-fixed');
+                if (alertDiv) alertDiv.remove();
+            }
+        }
     </script>
 </body>
 </html>
