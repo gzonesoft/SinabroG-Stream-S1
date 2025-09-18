@@ -1099,7 +1099,7 @@ class StreamViewer {
                 </div>
                 
                 <div class="button-container">
-                    <button class="download-btn" onclick="downloadImage()">
+                    <button class="download-btn" onclick="downloadCaptureFromPopup()">
                         📥 다운로드
                     </button>
                     <button class="close-btn" onclick="window.close()">
@@ -1110,6 +1110,7 @@ class StreamViewer {
                 <script>
                     // 전역 변수로 캡처 데이터 저장
                     window.captureData = {
+                        id: '${capture.id}',
                         overlayData: ${capture.overlayData?.userScreenData?.sensorData ? 
                             JSON.stringify(capture.overlayData.userScreenData.sensorData) : 
                             'null'},
@@ -1118,45 +1119,21 @@ class StreamViewer {
                         dataUrl: '${capture.dataUrl}'
                     };
                     
-                    function downloadImage() {
-                        const link = document.createElement('a');
-                        
-                        // 위치 정보 기반 파일명 생성
-                        const overlayData = window.captureData.overlayData;
-                        const captureTime = new Date(window.captureData.timestamp);
-                        
-                        if (overlayData && overlayData.LATITUDE && overlayData.LONGITUDE) {
-                            // 한국 시간(KST)으로 변환
-                            const kstDate = new Date(captureTime.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
-                            const year = kstDate.getUTCFullYear();
-                            const month = String(kstDate.getUTCMonth() + 1).padStart(2, '0');
-                            const day = String(kstDate.getUTCDate()).padStart(2, '0');
-                            const hour = String(kstDate.getUTCHours()).padStart(2, '0');
-                            const minute = String(kstDate.getUTCMinutes()).padStart(2, '0');
-                            const second = String(kstDate.getUTCSeconds()).padStart(2, '0');
-                            
-                            // 날짜 문자열 생성 (YYYYMMDDHHMMSS 형식)
-                            const dateStr = year + month + day + hour + minute + second;
-                            
-                            // 위도, 경도, 고도 정보
-                            const latitude = overlayData.LATITUDE || 0;
-                            const longitude = overlayData.LONGITUDE || 0;
-                            const altitude = Math.round(overlayData.ALTITUDE || 0);
-                            
-                            // 위도/경도를 정수로 변환 (소수점 6자리까지 유지하면서 점 제거)
-                            const latitudeStr = (latitude * 1000000).toFixed(0);
-                            const longitudeStr = (longitude * 1000000).toFixed(0);
-                            
-                            // 위치 기반 파일명
-                            link.download = dateStr + '_' + latitudeStr + '_' + longitudeStr + '_' + altitude + '.png';
+                    function downloadCaptureFromPopup() {
+                        // 부모 창의 downloadCapture 함수를 사용
+                        if (window.opener && window.opener.streamViewer) {
+                            const captureId = window.captureData.id;
+                            window.opener.streamViewer.downloadCapture(captureId);
                         } else {
-                            // 위치 정보가 없는 경우 기본 파일명
+                            // 백업: 부모 창이 없으면 기존 방식 사용
+                            const link = document.createElement('a');
+                            link.href = window.captureData.dataUrl;
+                            
+                            // 기본 파일명 생성
                             const isoStr = new Date(window.captureData.timestamp).toISOString().slice(0, 19).replace(/:/g, '-');
                             link.download = 'stream-capture-' + window.captureData.streamKey + '-' + isoStr + '.png';
+                            link.click();
                         }
-                        
-                        link.href = window.captureData.dataUrl;
-                        link.click();
                     }
                 </script>
             </body>
