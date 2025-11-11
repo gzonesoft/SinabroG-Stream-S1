@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스트림 시청 - GZONESOFT</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+        }
+        .stream-card {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .stream-card:hover {
+            transform: translateY(-5px);
+        }
+        .method-icon {
+            font-size: 3rem;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="container">
+            <h1 class="display-4 mb-4">
+                <i class="fas fa-video me-3"></i>
+                AHSYSTEM 라이브 스트림
+            </h1>
+            <!-- <p class="lead mb-4">다양한 방법으로 실시간 스트리밍을 시청하세요</p> -->
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="input-group input-group-lg">
+                        <input type="text" class="form-control" id="streamKeyInput" 
+                               placeholder="스트림 키를 입력하세요" 
+                               style="background: rgba(255,255,255,0.9);">
+                        <button class="btn btn-light" type="button" onclick="startViewing()">
+                            <i class="fas fa-play me-2"></i>
+                            시청하기
+                        </button>
+                        <button class="btn btn-outline-light" type="button" onclick="setServiceName()" title="서비스 이름 변경">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container py-5">
+        <!-- 웹 플레이어 섹션 -->
+        <div class="row mb-5">
+            <div class="col-lg-8">
+                <div class="card stream-card">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-desktop me-2"></i>
+                            Live Stream Player
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="player-wrapper position-relative">
+                            <div id="webPlayer" class="ratio ratio-16x9 bg-dark d-flex align-items-center justify-content-center mb-3">
+                                <div class="text-white text-center">
+                                    <i class="fas fa-video fa-4x mb-3"></i>
+                                    <h5>스트림 키를 입력하고 시청하기 버튼을 클릭하세요</h5>
+                                    <p>HLS 지원 브라우저에서 바로 시청 가능합니다</p>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>추천:</strong> Chrome, Safari, Edge 브라우저에서 최적의 시청 경험을 제공합니다.
+                            <hr>
+                            <small>
+                                <i class="fas fa-clock me-1"></i>
+                                <strong>오버레이 기능:</strong> 실시간 시간정보(우측하단)와 서비스명(좌측상단)이 자동 표시됩니다. 
+                                서비스명 변경은 위의 <i class="fas fa-edit"></i> 버튼을 클릭하세요.
+                            </small>
+                        </div> -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 캡처 컨트롤 패널 -->
+            <div class="col-lg-4">
+                <div class="card capture-panel" id="capturePanel">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-camera me-2"></i>
+                            실시간 캡처
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- 메인 캡처 버튼 -->
+                        <!-- 메인 캡처 버튼 (현재 사용되지 않음) -->
+                        <!-- <div class="text-center mb-4">
+                            <button id="captureBtn" class="btn btn-danger btn-lg capture-main-btn" 
+                                    onclick="captureFrame()" title="사용자 화면 그대로 캡처 (오버레이 포함)">
+                                <i class="fas fa-camera fa-3x d-block mb-2"></i>
+                                <span class="fw-bold">화면 캡처</span>
+                                <small class="d-block mt-1" style="font-size: 0.7rem; opacity: 0.9;">오버레이 포함</small>
+                            </button>
+                        </div> -->
+                        
+                        <!-- 캡처 컨트롤 버튼들 (2개씩 한 줄) -->
+                        <div class="capture-controls mb-3">
+                            <div class="row g-3 mb-2">
+                                <div class="col-6">
+                                    <button class="btn btn-danger w-100 capture-btn" onclick="captureVideoOnly()" id="realTimeCaptureBtn" title="영상만 캡처 (오버레이 제외)">
+                                        <i class="fas fa-video me-1"></i>
+                                        <span class="btn-text">영상 캡처</span>
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button class="btn btn-primary w-100 capture-btn" onclick="captureWithOverlay()" title="화면 전체 캡처 (오버레이 포함)">
+                                        <i class="fas fa-layer-group me-1"></i>
+                                        <span class="btn-text">오버레이 캡처</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 갤러리 및 자동 캡처 버튼들 (2개씩 한 줄) -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <button class="btn btn-outline-primary w-100" onclick="openCaptureGallery()">
+                                    <i class="fas fa-images me-1"></i>
+                                    갤러리
+                                    <span class="badge bg-success ms-1" id="galleryBadge" style="display: none;">0</span>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-outline-success w-100" onclick="toggleAutoCapture()" id="autoCaptureBtn">
+                                    <i class="fas fa-clock me-1"></i>
+                                    자동캡처
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 자동 캡처 설명 -->
+                        <!-- <div class="text-center mb-3">
+                            <small class="text-muted">
+                                일정 간격으로 자동 촬영
+                            </small>
+                        </div> -->
+                        
+                        <!-- 실시간 캡처 이미지 표시 영역 -->
+                        <div class="mt-4" id="recentCapturesSection" style="display: none;">
+                            <hr class="mb-3">
+                            <h6 class="mb-3">
+                                <i class="fas fa-history me-2"></i>
+                                최근 캡처
+                            </h6>
+                            <div id="recentCapturesContainer" class="d-flex flex-column gap-2">
+                                <!-- 최근 캡처된 이미지들이 여기에 실시간으로 표시됩니다 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 스트림 정보 패널 (숨김 처리) -->
+                <div class="card mt-3" id="streamInfoPanel" style="display: none;">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            스트림 정보
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="stream-info">
+                            <div class="mb-2">
+                                <small class="text-muted">스트림 키:</small>
+                                <div class="fw-bold" id="streamKeyInfo">스트림 키를 입력하세요</div>
+                            </div>
+                            <div class="mb-2">
+                                <small class="text-muted">상태:</small>
+                                <div class="fw-bold text-muted" id="streamStatusInfo">
+                                    <i class="fas fa-circle me-1"></i>대기중
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <small class="text-muted">연결 시간:</small>
+                                <div class="fw-bold" id="streamTimeInfo">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 시청 방법 가이드 -->
+        <!-- <div class="row mb-5">
+            <div class="col-12">
+                <h2 class="text-center mb-4">시청 방법</h2>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card stream-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-globe method-icon mb-3"></i>
+                        <h5 class="card-title">웹 브라우저</h5>
+                        <p class="card-text">
+                            가장 간단한 방법입니다. 위의 플레이어에서 바로 시청하세요.
+                        </p>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <strong>지원:</strong> Chrome, Safari, Edge<br>
+                                <strong>화질:</strong> 자동 조절
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card stream-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-play-circle method-icon mb-3"></i>
+                        <h5 class="card-title">VLC 플레이어</h5>
+                        <p class="card-text">
+                            고화질 시청을 원하시면 VLC를 사용하세요.
+                        </p>
+                        <div class="mt-3">
+                            <button class="btn btn-primary btn-sm" onclick="showVLCGuide()">
+                                설정 방법
+                            </button>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <strong>URL 형식:</strong> FLV 스트림<br>
+                                <strong>지연시간:</strong> 최소
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card stream-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-broadcast-tower method-icon mb-3"></i>
+                        <h5 class="card-title">OBS Studio</h5>
+                        <p class="card-text">
+                            방송인이라면 OBS의 소스로 추가해서 시청할 수 있습니다.
+                        </p>
+                        <div class="mt-3">
+                            <button class="btn btn-primary btn-sm" onclick="showOBSGuide()">
+                                설정 방법
+                            </button>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <strong>소스 타입:</strong> 미디어 소스<br>
+                                <strong>용도:</strong> 리액션 방송
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> -->
+
+        <!-- 상세 가이드 모달들 -->
+        <!-- VLC 가이드 모달 -->
+        <!-- <div class="modal fade" id="vlcGuideModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-play-circle me-2"></i>
+                            VLC로 스트림 시청하기
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="steps">
+                            <div class="step mb-4">
+                                <h6><span class="badge bg-primary me-2">1</span>VLC 플레이어 실행</h6>
+                                <p>VLC Media Player를 실행합니다. 없다면 <a href="https://www.videolan.org/vlc/" target="_blank">여기서 다운로드</a></p>
+                            </div>
+                            <div class="step mb-4">
+                                <h6><span class="badge bg-primary me-2">2</span>네트워크 스트림 열기</h6>
+                                <p><code>미디어</code> → <code>네트워크 스트림 열기</code> (Ctrl+N)</p>
+                            </div>
+                            <div class="step mb-4">
+                                <h6><span class="badge bg-primary me-2">3</span>스트림 URL 입력</h6>
+                                <p>다음 형식으로 URL을 입력하세요:</p>
+                                <div class="alert alert-secondary">
+                                    <code>http://ai.gzonesoft.com:18001/live/<span class="text-danger">[스트림키]</span>.flv</code>
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm" onclick="copyVLCUrl()">
+                                    <i class="fas fa-copy me-1"></i>
+                                    URL 복사 (스트림키 입력 후)
+                                </button>
+                            </div>
+                            <div class="step">
+                                <h6><span class="badge bg-primary me-2">4</span>재생</h6>
+                                <p><code>재생</code> 버튼을 클릭하면 스트림이 시작됩니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> -->
+
+        <!-- OBS 가이드 모달 -->
+        <!-- <div class="modal fade" id="obsGuideModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-broadcast-tower me-2"></i>
+                            OBS로 스트림 가져오기
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="steps">
+                            <div class="step mb-4">
+                                <h6><span class="badge bg-primary me-2">1</span>소스 추가</h6>
+                                <p>OBS의 <code>소스</code> 패널에서 <code>+</code> 버튼 → <code>미디어 소스</code> 선택</p>
+                            </div>
+                            <div class="step mb-4">
+                                <h6><span class="badge bg-primary me-2">2</span>소스 이름 설정</h6>
+                                <p>적당한 이름을 입력하고 <code>확인</code></p>
+                            </div>
+                            <div class="step mb-4">
+                                <h6><span class="badge bg-primary me-2">3</span>스트림 URL 설정</h6>
+                                <p><code>로컬 파일</code> 체크 해제 후, 다음 URL 입력:</p>
+                                <div class="alert alert-secondary">
+                                    <code>http://ai.gzonesoft.com:18001/live/<span class="text-danger">[스트림키]</span>.flv</code>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <h6><span class="badge bg-primary me-2">4</span>완료</h6>
+                                <p><code>확인</code>을 누르면 스트림이 OBS 소스로 추가됩니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> -->
+        
+    </div>
+
+    <!-- 푸터 -->
+    <footer class="bg-dark text-light py-4">
+        <div class="container text-center">
+            <p class="mb-0">
+                <i class="fas fa-video me-2"></i>
+                AHSystem Streaming Service
+                <!-- <a href="https://ai.gzonesoft.com:17937" class="text-light">관리자 페이지</a> -->
+            </p>
+            <small class="text-muted">실시간 스트리밍 · 고화질 · 저지연</small>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="/js/capture-api-client.js"></script>
+    <script src="/js/capture-api-config.js"></script>
+    <script src="/js/position-api-client.js"></script>
+    <script src="/js/position-api-config.js"></script>
+    <script src="viewer.js?v=20250905-002"></script>
+</body>
+</html>

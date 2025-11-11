@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>localStorage 용량 관리 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .status {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .status h3 {
+            margin-top: 0;
+            color: #2e7d32;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button.danger {
+            background: #f44336;
+        }
+        button.danger:hover {
+            background: #d32f2f;
+        }
+        .log {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            background: white;
+            border-left: 3px solid #4CAF50;
+        }
+        .warning {
+            border-left-color: #ff9800;
+            background: #fff3e0;
+        }
+        .error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>localStorage 용량 관리 테스트</h1>
+        
+        <div class="status">
+            <h3>저장소 상태</h3>
+            <div class="status-item">
+                <span>현재 사용량:</span>
+                <span id="currentSize">0 KB</span>
+            </div>
+            <div class="status-item">
+                <span>최대 용량:</span>
+                <span id="maxSize">4608 KB</span>
+            </div>
+            <div class="status-item">
+                <span>캡처 개수:</span>
+                <span id="captureCount">0 / 100</span>
+            </div>
+            <div class="status-item">
+                <span>여유 공간:</span>
+                <span id="availableSpace">4608 KB</span>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill">0%</div>
+        </div>
+
+        <div class="buttons">
+            <button onclick="addSmallCapture()">작은 캡처 추가 (50KB)</button>
+            <button onclick="addMediumCapture()">중간 캡처 추가 (200KB)</button>
+            <button onclick="addLargeCapture()">큰 캡처 추가 (500KB)</button>
+            <button onclick="addManyCaptures()">여러 캡처 추가 (10개)</button>
+            <button onclick="fillStorage()">저장소 가득 채우기</button>
+            <button onclick="testAutoCleanup()">자동 정리 테스트</button>
+            <button class="danger" onclick="clearAllCaptures()">모든 캡처 삭제</button>
+            <button onclick="updateStatus()">상태 업데이트</button>
+        </div>
+
+        <div class="log" id="log">
+            <div class="log-entry">테스트 준비 완료</div>
+        </div>
+    </div>
+
+    <script src="js/capture-api-client.js"></script>
+    <script>
+        // 로그 추가 함수
+        function addLog(message, type = 'info') {
+            const log = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            if (type === 'warning') entry.className += ' warning';
+            if (type === 'error') entry.className += ' error';
+            
+            const time = new Date().toLocaleTimeString();
+            entry.textContent = `[${time}] ${message}`;
+            log.insertBefore(entry, log.firstChild);
+            
+            // 최대 50개 로그만 유지
+            while (log.children.length > 50) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        // 상태 업데이트
+        function updateStatus() {
+            const status = window.captureStorage.getStorageStatus();
+            
+            document.getElementById('currentSize').textContent = 
+                `${(status.currentSize / 1024).toFixed(1)} KB`;
+            document.getElementById('maxSize').textContent = 
+                `${(status.maxSize / 1024).toFixed(1)} KB`;
+            document.getElementById('captureCount').textContent = 
+                `${status.captureCount} / ${status.maxCaptures}`;
+            document.getElementById('availableSpace').textContent = 
+                `${(status.availableSpace / 1024).toFixed(1)} KB`;
+            
+            // 프로그레스 바 업데이트
+            const progressFill = document.getElementById('progressFill');
+            progressFill.style.width = `${status.usagePercent}%`;
+            progressFill.textContent = `${status.usagePercent}%`;
+            
+            // 색상 변경
+            if (status.usagePercent > 80) {
+                progressFill.style.background = 'linear-gradient(90deg, #f44336, #ff9800)';
+            } else if (status.usagePercent > 60) {
+                progressFill.style.background = 'linear-gradient(90deg, #ff9800, #ffc107)';
+            } else {
+                progressFill.style.background = 'linear-gradient(90deg, #4CAF50, #8BC34A)';
+            }
+            
+            if (status.isNearLimit) {
+                addLog(`경고: 저장소 용량이 80% 이상 사용됨 (${status.usagePercent}%)`, 'warning');
+            }
+            
+            return status;
+        }
+
+        // 테스트 캡처 생성
+        function createTestCapture(sizeKB = 100) {
+            const size = sizeKB * 512; // Base64는 원본의 약 1.33배
+            const data = 'A'.repeat(size);
+            return {
+                id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9),
+                timestamp: Date.now() - Math.floor(Math.random() * 86400000), // 랜덤 시간
+                imageData: 'data:image/jpeg;base64,' + data,
+                streamKey: 'test',
+                title: `테스트 캡처 (${sizeKB}KB)`,
+                droneData: {
+                    lat: 37.5665 + Math.random() * 0.01,
+                    lng: 126.9780 + Math.random() * 0.01,
+                    alt: 100 + Math.random() * 200,
+                    heading: Math.random() * 360
+                }
+            };
+        }
+
+        // 작은 캡처 추가
+        async function addSmallCapture() {
+            const capture = createTestCapture(50);
+            const result = await window.captureStorage.saveCapture(capture);
+            
+            if (result.success) {
+                addLog('작은 캡처 (50KB) 추가 성공');
+                if (result.warning) {
+                    addLog(result.warning, 'warning');
+                }
+            } else {
+                addLog(`캡처 추가 실패: ${result.error}`, 'error');
+            }
+            updateStatus();
+        }
+
+        // 중간 캡처 추가
+        async function addMediumCapture() {
+            const capture = createTestCapture(200);
+            const result = await window.captureStorage.saveCapture(capture);
+            
+            if (result.success) {
+                addLog('중간 캡처 (200KB) 추가 성공');
+                if (result.warning) {
+                    addLog(result.warning, 'warning');
+                }
+            } else {
+                addLog(`캡처 추가 실패: ${result.error}`, 'error');
+            }
+            updateStatus();
+        }
+
+        // 큰 캡처 추가
+        async function addLargeCapture() {
+            const capture = createTestCapture(500);
+            const result = await window.captureStorage.saveCapture(capture);
+            
+            if (result.success) {
+                addLog('큰 캡처 (500KB) 추가 성공');
+                if (result.warning) {
+                    addLog(result.warning, 'warning');
+                }
+            } else {
+                addLog(`캡처 추가 실패: ${result.error}`, 'error');
+            }
+            updateStatus();
+        }
+
+        // 여러 캡처 추가
+        async function addManyCaptures() {
+            addLog('10개 캡처 추가 시작...');
+            let successCount = 0;
+            
+            for (let i = 0; i < 10; i++) {
+                const size = 50 + Math.floor(Math.random() * 150); // 50-200KB
+                const capture = createTestCapture(size);
+                const result = await window.captureStorage.saveCapture(capture);
+                
+                if (result.success) {
+                    successCount++;
+                    if (result.warning) {
+                        addLog(`캡처 ${i+1}: ${result.warning}`, 'warning');
+                    }
+                } else {
+                    addLog(`캡처 ${i+1} 실패: ${result.error}`, 'error');
+                    break;
+                }
+            }
+            
+            addLog(`${successCount}/10개 캡처 추가 완료`);
+            updateStatus();
+        }
+
+        // 저장소 가득 채우기
+        async function fillStorage() {
+            addLog('저장소 채우기 시작...');
+            let count = 0;
+            
+            while (true) {
+                const capture = createTestCapture(100);
+                const result = await window.captureStorage.saveCapture(capture);
+                
+                if (result.success) {
+                    count++;
+                    if (result.warning) {
+                        addLog(`자동 정리 발생: ${result.warning}`, 'warning');
+                    }
+                } else {
+                    addLog(`저장소 가득 참 - ${count}개 캡처 추가됨`, 'warning');
+                    break;
+                }
+                
+                const status = updateStatus();
+                if (status.usagePercent > 95) {
+                    addLog(`저장소 ${status.usagePercent}% 사용 - 중단`, 'warning');
+                    break;
+                }
+            }
+            
+            updateStatus();
+        }
+
+        // 자동 정리 테스트
+        async function testAutoCleanup() {
+            addLog('자동 정리 테스트 시작...');
+            
+            // 먼저 저장소를 80% 이상 채움
+            await fillStorage();
+            
+            // 큰 캡처 추가 시도
+            addLog('큰 캡처 추가 시도 (자동 정리 트리거)...');
+            const capture = createTestCapture(500);
+            const result = await window.captureStorage.saveCapture(capture);
+            
+            if (result.success) {
+                addLog('캡처 추가 성공 - 자동 정리 완료');
+                if (result.warning) {
+                    addLog(`정리 내용: ${result.warning}`, 'warning');
+                }
+            } else {
+                addLog(`캡처 추가 실패: ${result.error}`, 'error');
+            }
+            
+            updateStatus();
+        }
+
+        // 모든 캡처 삭제
+        async function clearAllCaptures() {
+            if (!confirm('정말로 모든 캡처를 삭제하시겠습니까?')) {
+                return;
+            }
+            
+            await window.captureStorage.clearAllCaptures();
+            addLog('모든 캡처 삭제 완료');
+            updateStatus();
+        }
+
+        // 페이지 로드 시 상태 업데이트
+        window.addEventListener('load', () => {
+            updateStatus();
+            addLog('localStorage 용량 관리 테스트 페이지 로드 완료');
+        });
+
+        // 5초마다 자동 상태 업데이트
+        setInterval(updateStatus, 5000);
+    </script>
+</body>
+</html>

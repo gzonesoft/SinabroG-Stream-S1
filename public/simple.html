@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스트림 시청 - GZONESOFT (Simple)</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0;
+            text-align: center;
+        }
+        .stream-url {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        .copy-success {
+            animation: flash 0.5s;
+        }
+        @keyframes flash {
+            0% { background-color: #28a745; }
+            100% { background-color: #2d3748; }
+        }
+    </style>
+</head>
+<body>
+    <div class="hero-section">
+        <div class="container">
+            <h1 class="display-5 mb-4">
+                <i class="fas fa-video me-3"></i>
+                GZONESOFT 스트림 시청
+            </h1>
+            <p class="lead">VLC나 다른 플레이어로 시청하세요</p>
+        </div>
+    </div>
+
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-play-circle me-2"></i>
+                            스트림 시청 URL
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">스트림 키 입력</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="streamKey" 
+                                       placeholder="예: 1122, 4426" value="">
+                                <button class="btn btn-primary" onclick="generateUrls()">
+                                    URL 생성
+                                </button>
+                                <button class="btn btn-success" onclick="startWebViewing()">
+                                    <i class="fas fa-play me-1"></i>
+                                    웹에서 시청
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="urlSection" style="display: none;">
+                            <h6 class="mt-4 mb-3">시청 URL들:</h6>
+                            
+                            <!-- 웹 플레이어 섹션 -->
+                            <div class="mb-4">
+                                <div class="card">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-play me-2"></i>
+                                            실시간 웹 플레이어 (오버레이 포함)
+                                        </h6>
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <div id="simpleWebPlayer" class="ratio ratio-16x9 bg-dark d-flex align-items-center justify-content-center">
+                                            <div class="text-white text-center">
+                                                <i class="fas fa-video fa-4x mb-3"></i>
+                                                <h5>웹에서 시청하기 버튼을 클릭하세요</h5>
+                                                <p>실시간 시간 표시와 서비스명이 자동으로 오버레이됩니다</p>
+                                            </div>
+                                        </div>
+                                        <div class="p-3">
+                                            <div class="d-flex gap-2">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="setServiceName()" title="서비스명 변경">
+                                                    <i class="fas fa-edit me-1"></i>서비스명 변경
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullscreen()" title="전체화면">
+                                                    <i class="fas fa-expand me-1"></i>전체화면
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- VLC URL -->
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-play-circle text-primary me-2"></i>
+                                    VLC 플레이어 (권장)
+                                </label>
+                                <div class="input-group">
+                                    <div class="form-control stream-url" id="vlcUrl">URL이 여기에 표시됩니다</div>
+                                    <button class="btn btn-outline-primary" onclick="copyUrl('vlcUrl')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted">VLC → 미디어 → 네트워크 스트림 열기 → 위 URL 입력</small>
+                            </div>
+
+                            <!-- 웹 시청 링크 -->
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-globe text-success me-2"></i>
+                                    웹 브라우저 시청 링크
+                                </label>
+                                <div class="input-group">
+                                    <div class="form-control stream-url" id="webUrl">URL이 여기에 표시됩니다</div>
+                                    <button class="btn btn-outline-success" onclick="openWebViewer()">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted">새 탭에서 웹 플레이어 열기</small>
+                            </div>
+
+                            <!-- 모바일 앱들 -->
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-mobile-alt text-info me-2"></i>
+                                    모바일 앱 시청
+                                </label>
+                                <div class="input-group">
+                                    <div class="form-control stream-url" id="mobileUrl">URL이 여기에 표시됩니다</div>
+                                    <button class="btn btn-outline-info" onclick="copyUrl('mobileUrl')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted">VLC for Mobile, MX Player 등에서 네트워크 스트림으로 열기</small>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>중요:</strong> 스트림이 실제로 방송 중일 때만 시청 가능합니다.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 현재 활성 스트림 표시 -->
+        <div class="row justify-content-center mt-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-broadcast-tower me-2"></i>
+                            현재 활성 스트림
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="activeStreams">
+                            <div class="text-center text-muted">
+                                <div class="spinner-border spinner-border-sm me-2"></div>
+                                로딩 중...
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary mt-2" onclick="refreshActiveStreams()">
+                            <i class="fas fa-sync-alt me-1"></i>
+                            새로고침
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
+    
+    <script>
+        let currentStreamViewer = null;
+        
+        // 간단한 스트림 뷰어 클래스
+        class SimpleStreamViewer {
+            constructor() {
+                this.currentStreamKey = null;
+                this.hls = null;
+                this.timeUpdateInterval = null;
+                this.serviceName = 'AHSYSTEM Live';
+            }
+            
+            startViewing(streamKey, playerId) {
+                this.currentStreamKey = streamKey;
+                this.loadStream(streamKey, playerId);
+            }
+            
+            loadStream(streamKey, playerId) {
+                const webPlayer = document.getElementById(playerId);
+                const flvUrl = `https://ai.gzonesoft.com:18002/live/${streamKey}.flv`;
+                
+                // 기존 HLS 정리
+                if (this.hls) {
+                    this.hls.destroy();
+                    this.hls = null;
+                }
+                
+                // 로딩 표시
+                webPlayer.innerHTML = `
+                    <div class="text-white text-center">
+                        <div class="spinner-border mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <h5>FLV 스트림을 로딩중입니다...</h5>
+                        <p>스트림 키: <strong>${streamKey}</strong></p>
+                    </div>
+                `;
+                
+                // FLV 스트림으로 직접 시도
+                this.loadFLVStream(streamKey, flvUrl, webPlayer);
+            }
+            
+            createVideoContainer() {
+                const container = document.createElement('div');
+                container.className = 'video-container w-100 h-100';
+                
+                const video = document.createElement('video');
+                video.controls = true;
+                video.autoplay = true;
+                video.muted = true;
+                video.className = 'w-100 h-100';
+                video.style.objectFit = 'contain';
+                
+                // 서비스 이름 오버레이
+                const serviceOverlay = document.createElement('div');
+                serviceOverlay.className = 'video-overlay overlay-service-name overlay-fade-in';
+                serviceOverlay.textContent = this.serviceName;
+                
+                // 시간 오버레이
+                const timeOverlay = document.createElement('div');
+                timeOverlay.className = 'video-overlay overlay-time overlay-fade-in';
+                timeOverlay.innerHTML = `
+                    <div class="overlay-current-time">--:--:--</div>
+                    <div class="overlay-date">----년 --월 --일</div>
+                `;
+                
+                container.appendChild(video);
+                container.appendChild(serviceOverlay);
+                container.appendChild(timeOverlay);
+                
+                return container;
+            }
+            
+            loadFLVStream(streamKey, flvUrl, webPlayer) {
+                if (flvjs && flvjs.isSupported()) {
+                    const videoContainer = this.createVideoContainer();
+                    const video = videoContainer.querySelector('video');
+                    
+                    webPlayer.innerHTML = '';
+                    webPlayer.appendChild(videoContainer);
+                    
+                    const flvPlayer = flvjs.createPlayer({
+                        type: 'flv',
+                        url: flvUrl,
+                        isLive: true
+                    }, {
+                        enableWorker: false,
+                        enableStashBuffer: false,
+                        stashInitialSize: 128,
+                        isLive: true
+                    });
+                    
+                    flvPlayer.attachMediaElement(video);
+                    
+                    flvPlayer.on(flvjs.Events.LOADED_METADATA, () => {
+                        video.muted = false;
+                        this.startOverlayUpdate(videoContainer);
+                        this.showToast('FLV 스트림이 시작되었습니다!', 'success');
+                    });
+                    
+                    flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
+                        console.error('FLV.js Error:', errorType, errorDetail);
+                        this.stopOverlayUpdate();
+                        this.handleStreamError(streamKey, flvUrl, webPlayer);
+                    });
+                    
+                    try {
+                        flvPlayer.load();
+                        flvPlayer.play();
+                    } catch (error) {
+                        console.error('FLV.js failed to start:', error);
+                        this.stopOverlayUpdate();
+                        this.handleStreamError(streamKey, flvUrl, webPlayer);
+                    }
+                } else {
+                    this.handleStreamError(streamKey, flvUrl, webPlayer, 'FLV.js가 지원되지 않는 브라우저입니다.');
+                }
+            }
+            
+            startOverlayUpdate(container) {
+                this.stopOverlayUpdate();
+                
+                const timeOverlay = container.querySelector('.overlay-time');
+                if (!timeOverlay) {
+                    console.warn('시간 오버레이 요소를 찾을 수 없습니다 (simple.html)');
+                    return;
+                }
+                
+                console.log('Simple 오버레이 업데이트 시작');
+                
+                this.timeUpdateInterval = setInterval(() => {
+                    this.updateTimeOverlay(timeOverlay);
+                }, 1000);
+                
+                this.updateTimeOverlay(timeOverlay);
+            }
+            
+            stopOverlayUpdate() {
+                if (this.timeUpdateInterval) {
+                    clearInterval(this.timeUpdateInterval);
+                    this.timeUpdateInterval = null;
+                    console.log('Simple 오버레이 업데이트 중지');
+                }
+            }
+            
+            updateTimeOverlay(timeOverlay) {
+                if (!timeOverlay) {
+                    console.warn('timeOverlay가 존재하지 않습니다 (simple.html)');
+                    return;
+                }
+                
+                const now = new Date();
+                
+                const timeString = now.toLocaleTimeString('ko-KR', {
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                
+                const dateString = now.toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'short'
+                });
+                
+                const timeElement = timeOverlay.querySelector('.overlay-current-time');
+                const dateElement = timeOverlay.querySelector('.overlay-date');
+                
+                if (timeElement) {
+                    timeElement.textContent = timeString;
+                    console.log('Simple 시간 업데이트:', timeString);
+                } else {
+                    console.warn('Simple 시간 요소를 찾을 수 없습니다');
+                }
+                
+                if (dateElement) {
+                    dateElement.textContent = dateString;
+                } else {
+                    console.warn('Simple 날짜 요소를 찾을 수 없습니다');
+                }
+            }
+            
+            setServiceName(name) {
+                this.serviceName = name || 'AHSYSTEM Live';
+                
+                const serviceOverlay = document.querySelector('.overlay-service-name');
+                if (serviceOverlay) {
+                    serviceOverlay.textContent = this.serviceName;
+                }
+            }
+            
+            handleStreamError(streamKey, flvUrl, webPlayer, message = '스트림 연결에 실패했습니다.') {
+                webPlayer.innerHTML = `
+                    <div class="text-white text-center p-4">
+                        <i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i>
+                        <h5>${message}</h5>
+                        <p class="mb-3">VLC 등의 외부 플레이어를 사용해주세요.</p>
+                        <button class="btn btn-outline-light" onclick="copyUrl('vlcUrl')">
+                            <i class="fas fa-copy me-2"></i>VLC URL 복사
+                        </button>
+                    </div>
+                `;
+                this.showToast('웹 플레이어 연결 실패', 'error');
+            }
+            
+            showToast(message, type) {
+                const toast = document.createElement('div');
+                toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} border-0 position-fixed top-0 end-0 m-3`;
+                toast.style.zIndex = '9999';
+                toast.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : 'info'} me-2"></i>
+                            ${message}
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+                
+                const bsToast = new bootstrap.Toast(toast);
+                bsToast.show();
+                
+                setTimeout(() => toast.remove(), 3000);
+            }
+        }
+        
+        // 전역 변수
+        currentStreamViewer = new SimpleStreamViewer();
+        // 웹에서 바로 시청
+        function startWebViewing() {
+            const streamKey = document.getElementById('streamKey').value.trim();
+            if (!streamKey) {
+                alert('먼저 스트림 키를 입력해주세요.');
+                return;
+            }
+            
+            currentStreamViewer.startViewing(streamKey, 'simpleWebPlayer');
+            
+            // URL 섹션도 함께 표시
+            generateUrls();
+        }
+        
+        // 서비스명 변경
+        function setServiceName() {
+            const name = prompt('서비스 이름을 입력하세요:', currentStreamViewer.serviceName);
+            if (name !== null) {
+                currentStreamViewer.setServiceName(name);
+                currentStreamViewer.showToast('서비스 이름이 변경되었습니다!', 'success');
+            }
+        }
+        
+        // 전체화면 토글
+        function toggleFullscreen() {
+            const player = document.getElementById('simpleWebPlayer');
+            if (!document.fullscreenElement) {
+                player.requestFullscreen().catch(err => {
+                    console.log('전체화면 실패:', err);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        // URL 생성
+        function generateUrls() {
+            const streamKey = document.getElementById('streamKey').value.trim();
+            if (!streamKey) {
+                alert('스트림 키를 입력해주세요.');
+                return;
+            }
+            
+            const vlcUrl = `https://ai.gzonesoft.com:18002/live/${streamKey}.flv`;
+            const webUrl = `https://ai.gzonesoft.com:17937/watch?key=${streamKey}`;
+            const mobileUrl = vlcUrl;
+            
+            document.getElementById('vlcUrl').textContent = vlcUrl;
+            document.getElementById('webUrl').textContent = webUrl;
+            document.getElementById('mobileUrl').textContent = mobileUrl;
+            
+            document.getElementById('urlSection').style.display = 'block';
+        }
+        
+        // URL 복사
+        async function copyUrl(elementId) {
+            const element = document.getElementById(elementId);
+            const url = element.textContent;
+            
+            try {
+                await navigator.clipboard.writeText(url);
+                element.classList.add('copy-success');
+                setTimeout(() => element.classList.remove('copy-success'), 500);
+                
+                // 성공 메시지
+                const toast = document.createElement('div');
+                toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed top-0 end-0 m-3';
+                toast.style.zIndex = '9999';
+                toast.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="fas fa-check me-2"></i>
+                            URL이 복사되었습니다!
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+                
+                const bsToast = new bootstrap.Toast(toast);
+                bsToast.show();
+                
+                setTimeout(() => toast.remove(), 3000);
+                
+            } catch (error) {
+                alert('복사에 실패했습니다: ' + error.message);
+            }
+        }
+        
+        // 웹 뷰어 열기
+        function openWebViewer() {
+            const streamKey = document.getElementById('streamKey').value.trim();
+            if (!streamKey) {
+                alert('먼저 스트림 키를 입력해주세요.');
+                return;
+            }
+            
+            const webUrl = `https://ai.gzonesoft.com:17937/watch?key=${streamKey}`;
+            window.open(webUrl, '_blank');
+        }
+        
+        // 활성 스트림 새로고침
+        async function refreshActiveStreams() {
+            try {
+                const response = await fetch('https://ai.gzonesoft.com:17937/api/streams');
+                const streams = await response.json();
+                
+                const container = document.getElementById('activeStreams');
+                
+                if (streams.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center text-muted">
+                            <i class="fas fa-info-circle me-2"></i>
+                            현재 활성 스트림이 없습니다.
+                        </div>
+                    `;
+                } else {
+                    const streamsHtml = streams.map(stream => `
+                        <div class="d-flex justify-content-between align-items-center p-2 border rounded mb-2">
+                            <div>
+                                <strong>키: ${stream.streamKey}</strong>
+                                <small class="text-muted ms-2">시청자: ${stream.viewers || 0}명</small>
+                            </div>
+                            <button class="btn btn-sm btn-primary" onclick="document.getElementById('streamKey').value='${stream.streamKey}'; generateUrls();">
+                                선택
+                            </button>
+                        </div>
+                    `).join('');
+                    
+                    container.innerHTML = streamsHtml;
+                }
+            } catch (error) {
+                console.error('Failed to fetch streams:', error);
+                document.getElementById('activeStreams').innerHTML = `
+                    <div class="text-center text-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        스트림 목록을 불러올 수 없습니다.
+                    </div>
+                `;
+            }
+        }
+        
+        // 페이지 로드시 URL 파라미터 확인
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const streamKey = urlParams.get('key');
+            
+            if (streamKey) {
+                document.getElementById('streamKey').value = streamKey;
+                generateUrls();
+            }
+            
+            refreshActiveStreams();
+        });
+        
+        // Enter 키 지원
+        document.getElementById('streamKey').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                generateUrls();
+            }
+        });
+        
+        // Shift+Enter로 바로 웹 시청
+        document.getElementById('streamKey').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.shiftKey) {
+                e.preventDefault();
+                startWebViewing();
+            }
+        });
+    </script>
+</body>
+</html>

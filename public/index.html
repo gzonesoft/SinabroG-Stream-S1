@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RTMP 스트리밍 서비스</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-video me-2"></i>
+                RTMP 스트리밍 서비스
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a href="/watch" class="nav-link me-3" target="_blank">
+                    <i class="fas fa-external-link-alt me-1"></i>
+                    시청 페이지
+                </a>
+                <span class="navbar-text me-3">
+                    <i class="fas fa-circle text-success me-1"></i>
+                    <span id="connectionStatus">연결됨</span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- 대시보드 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">활성 스트림</h6>
+                                <h3 id="activeStreamsCount">0</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-broadcast-tower fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">총 시청자</h6>
+                                <h3 id="totalViewers">0</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-users fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">서버 포트</h6>
+                                <h3>17935</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-server fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">업타임</h6>
+                                <h3 id="uptime">00:00:00</h3>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-clock fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 스트림 설정 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-cog me-2"></i>
+                            스트림 설정
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">RTMP URL</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="rtmpUrl" value="rtmp://ai.gzonesoft.com:17935/live" readonly>
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('rtmpUrl')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">스트림 키</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="streamKey" placeholder="스트림 키를 생성하세요">
+                                <button class="btn btn-primary" type="button" onclick="generateStreamKey()">
+                                    키 생성
+                                </button>
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('streamKey')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            OBS나 기타 스트리밍 소프트웨어에서 위 정보를 사용하여 스트리밍을 시작하세요.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-play-circle me-2"></i>
+                            스트림 플레이어
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">재생할 스트림 키</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="playStreamKey" placeholder="재생할 스트림 키 입력">
+                                <button class="btn btn-success" type="button" onclick="playStream()">
+                                    재생
+                                </button>
+                            </div>
+                        </div>
+                        <div id="videoPlayer" class="ratio ratio-16x9 bg-dark d-flex align-items-center justify-content-center">
+                            <div class="text-white">
+                                <i class="fas fa-video fa-3x mb-2"></i>
+                                <p>스트림을 재생하려면 스트림 키를 입력하고 재생 버튼을 클릭하세요</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 활성 스트림 목록 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-list me-2"></i>
+                            활성 스트림 목록
+                        </h5>
+                        <button class="btn btn-sm btn-outline-primary" onclick="refreshStreams()">
+                            <i class="fas fa-sync-alt me-1"></i>
+                            새로고침
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="streamsList">
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-broadcast-tower fa-3x mb-3"></i>
+                                <p>현재 활성 스트림이 없습니다</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 로그 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-terminal me-2"></i>
+                            실시간 로그
+                        </h5>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="clearLogs()">
+                            <i class="fas fa-trash me-1"></i>
+                            로그 지우기
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="logContainer" class="bg-dark text-light p-3 rounded" style="height: 200px; overflow-y: auto; font-family: monospace;">
+                            <div class="text-success">[INFO] RTMP 스트리밍 서비스가 시작되었습니다</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="notificationToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="fas fa-info-circle text-primary me-2"></i>
+                <strong class="me-auto">알림</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastBody">
+                <!-- Toast message will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

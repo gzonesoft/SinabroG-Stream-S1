@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스트림 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-item {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        video {
+            width: 100%;
+            max-width: 640px;
+            height: 360px;
+            background: #000;
+        }
+        .url {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <h1>🎥 RTMP 스트림 테스트</h1>
+    
+    <div class="test-item">
+        <h2>1. HTTP-FLV 스트림 테스트</h2>
+        <div class="url">http://ai.gzonesoft.com:18001/live/live.flv</div>
+        <video id="flvVideo" controls muted>
+            <source src="http://ai.gzonesoft.com:18001/live/live.flv" type="video/x-flv">
+            브라우저가 FLV를 지원하지 않습니다.
+        </video>
+        <div id="flvStatus" class="status warning">상태: 대기 중</div>
+        <button onclick="testFlv()">FLV 테스트</button>
+        <button onclick="copyUrl('http://ai.gzonesoft.com:18001/live/live.flv')">URL 복사</button>
+    </div>
+
+    <div class="test-item">
+        <h2>2. HLS 스트림 테스트</h2>
+        <div class="url">http://ai.gzonesoft.com:18001/live/live/index.m3u8</div>
+        <video id="hlsVideo" controls muted></video>
+        <div id="hlsStatus" class="status warning">상태: 대기 중</div>
+        <button onclick="testHls()">HLS 테스트</button>
+        <button onclick="copyUrl('http://ai.gzonesoft.com:18001/live/live/index.m3u8')">URL 복사</button>
+    </div>
+
+    <div class="test-item">
+        <h2>3. 직접 링크 테스트</h2>
+        <p>다음 링크들을 VLC나 다른 미디어 플레이어에서 열어보세요:</p>
+        <div class="url">http://ai.gzonesoft.com:18001/live/live.flv</div>
+        <div class="url">rtmp://ai.gzonesoft.com:17935/live/live</div>
+        <button onclick="openVLC('http://ai.gzonesoft.com:18001/live/live.flv')">VLC로 FLV 열기</button>
+        <button onclick="openVLC('rtmp://ai.gzonesoft.com:17935/live/live')">VLC로 RTMP 열기</button>
+    </div>
+
+    <div class="test-item">
+        <h2>4. 스트림 상태 확인</h2>
+        <div id="streamInfo"></div>
+        <button onclick="checkStreams()">스트림 상태 확인</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
+    <script>
+        function testFlv() {
+            const video = document.getElementById('flvVideo');
+            const status = document.getElementById('flvStatus');
+            const flvUrl = 'http://ai.gzonesoft.com:18001/live/live.flv';
+            
+            status.className = 'status warning';
+            status.textContent = '상태: FLV.js 플레이어 초기화 중...';
+            
+            // 기존 플레이어 정리
+            if (window.testFlvPlayer) {
+                try {
+                    window.testFlvPlayer.pause();
+                    window.testFlvPlayer.unload();
+                    window.testFlvPlayer.detachMediaElement();
+                    window.testFlvPlayer.destroy();
+                } catch (e) {
+                    console.warn('Previous FLV player cleanup failed:', e);
+                }
+            }
+            
+            if (flvjs && flvjs.isSupported()) {
+                try {
+                    const flvPlayer = flvjs.createPlayer({
+                        type: 'flv',
+                        url: flvUrl,
+                        isLive: true
+                    });
+                    
+                    flvPlayer.attachMediaElement(video);
+                    
+                    flvPlayer.on(flvjs.Events.LOADED_METADATA, () => {
+                        status.className = 'status success';
+                        status.textContent = '상태: FLV 메타데이터 로드됨! ✓';
+                    });
+                    
+                    flvPlayer.on(flvjs.Events.ERROR, (errorType, errorDetail) => {
+                        status.className = 'status error';
+                        status.textContent = `상태: FLV 오류 ✗ - ${errorType}: ${errorDetail}`;
+                    });
+                    
+                    video.addEventListener('canplay', () => {
+                        status.className = 'status success';
+                        status.textContent = '상태: FLV 재생 준비 완료! ✓';
+                        video.play().catch(e => console.warn('Auto-play failed:', e));
+                    });
+                    
+                    flvPlayer.load();
+                    window.testFlvPlayer = flvPlayer;
+                    
+                } catch (error) {
+                    status.className = 'status error';
+                    status.textContent = '상태: FLV.js 플레이어 생성 실패 ✗ - ' + error.message;
+                }
+            } else {
+                status.className = 'status error';
+                status.textContent = '상태: FLV.js 미지원 브라우저 ✗';
+            }
+        }
+
+        function testHls() {
+            const video = document.getElementById('hlsVideo');
+            const status = document.getElementById('hlsStatus');
+            const hlsUrl = 'http://ai.gzonesoft.com:18001/live/live/index.m3u8';
+            
+            status.className = 'status warning';
+            status.textContent = '상태: HLS 로딩 중...';
+
+            if (Hls.isSupported()) {
+                const hls = new Hls({ debug: true });
+                
+                hls.loadSource(hlsUrl);
+                hls.attachMedia(video);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    status.className = 'status success';
+                    status.textContent = '상태: HLS 매니페스트 로드됨! ✓';
+                    video.play();
+                });
+                
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    status.className = 'status error';
+                    status.textContent = `상태: HLS 오류 ✗ - ${data.type}: ${data.details}`;
+                });
+                
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = hlsUrl;
+                video.addEventListener('loadstart', () => {
+                    status.className = 'status success';
+                    status.textContent = '상태: 네이티브 HLS 로딩 중... ✓';
+                });
+                video.addEventListener('error', (e) => {
+                    status.className = 'status error';
+                    status.textContent = '상태: 네이티브 HLS 실패 ✗';
+                });
+            } else {
+                status.className = 'status error';
+                status.textContent = '상태: HLS 미지원 브라우저 ✗';
+            }
+        }
+
+        async function checkStreams() {
+            const info = document.getElementById('streamInfo');
+            try {
+                const response = await fetch('/api/streams');
+                const streams = await response.json();
+                
+                info.innerHTML = `
+                    <h4>활성 스트림: ${streams.length}개</h4>
+                    ${streams.map(stream => `
+                        <div style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                            <strong>스트림 키:</strong> ${stream.streamKey}<br>
+                            <strong>경로:</strong> ${stream.streamPath}<br>
+                            <strong>원본 경로:</strong> ${stream.originalPath}<br>
+                            <strong>시청자:</strong> ${stream.viewers || 0}명<br>
+                            <strong>시작 시간:</strong> ${new Date(stream.startTime).toLocaleString()}
+                        </div>
+                    `).join('')}
+                `;
+            } catch (error) {
+                info.innerHTML = `<div class="status error">API 오류: ${error.message}</div>`;
+            }
+        }
+
+        function copyUrl(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('URL이 클립보드에 복사되었습니다: ' + url);
+            }).catch(err => {
+                prompt('다음 URL을 복사하세요:', url);
+            });
+        }
+
+        function openVLC(url) {
+            // VLC 프로토콜 핸들러 시도
+            const vlcUrl = `vlc://${url}`;
+            window.open(vlcUrl, '_blank');
+            
+            // 백업으로 직접 복사 제공
+            setTimeout(() => {
+                if (confirm('VLC가 자동으로 열리지 않았나요? URL을 복사하시겠습니까?')) {
+                    copyUrl(url);
+                }
+            }, 3000);
+        }
+
+        // 페이지 로드 시 자동으로 스트림 상태 확인
+        window.addEventListener('load', () => {
+            checkStreams();
+        });
+    </script>
+</body>
+</html>

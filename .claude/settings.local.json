@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pkill:*)",
+      "Bash(./stop-all-services.sh:*)",
+      "Bash(./start-all-services.sh:*)",
+      "Bash(node:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "Bash(npm start)",
+      "Read(//Users/gzonesoft/api_files/stream/capture/**)",
+      "Bash(cat:*)",
+      "Bash(docker exec:*)",
+      "Bash(git commit:*)",
+      "Bash(psql:*)",
+      "Read(//Users/gzonesoft/**)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(env)",
+      "Bash(compgen -c)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

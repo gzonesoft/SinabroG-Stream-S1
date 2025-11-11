@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오버레이 시간 테스트</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-clock me-2"></i>
+                            시간 오버레이 테스트
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <!-- 테스트 비디오 컨테이너 -->
+                        <div class="video-container">
+                            <div class="demo-video ratio ratio-16x9 bg-dark d-flex align-items-center justify-content-center" style="background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);">
+                                <div class="text-white text-center">
+                                    <i class="fas fa-play-circle fa-5x mb-3"></i>
+                                    <h3>시간 오버레이 테스트</h3>
+                                    <p>우측 하단의 시간이 실시간으로 업데이트되는지 확인하세요</p>
+                                </div>
+                            </div>
+                            
+                            <!-- 서비스 이름 오버레이 -->
+                            <div class="video-overlay overlay-service-name overlay-fade-in">
+                                AHSYSTEM Live
+                            </div>
+                            
+                            <!-- 시간 오버레이 -->
+                            <div class="video-overlay overlay-time overlay-fade-in" id="testTimeOverlay">
+                                <div class="overlay-current-time" id="testCurrentTime">--:--:--</div>
+                                <div class="overlay-date" id="testCurrentDate">----년 --월 --일</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>상태:</strong> <span id="updateStatus" class="text-success">업데이트 중...</span>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-primary" onclick="startTest()">
+                                    <i class="fas fa-play me-1"></i>시작
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="stopTest()">
+                                    <i class="fas fa-stop me-1"></i>중지
+                                </button>
+                                <button class="btn btn-sm btn-success" onclick="checkElements()">
+                                    <i class="fas fa-search me-1"></i>요소 확인
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 로그 패널 -->
+        <div class="row justify-content-center mt-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-terminal me-2"></i>
+                            디버깅 로그
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="debugLog" class="bg-dark text-light p-3 rounded" style="height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+                            <div class="text-success">[INFO] 페이지 로드 완료</div>
+                        </div>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="clearLog()">로그 지우기</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let testInterval = null;
+        let updateCount = 0;
+        
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('debugLog');
+            const timestamp = new Date().toLocaleTimeString('ko-KR');
+            const colorClass = type === 'error' ? 'text-danger' : type === 'success' ? 'text-success' : type === 'warning' ? 'text-warning' : 'text-info';
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = colorClass;
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function startTest() {
+            addLog('시간 오버레이 테스트 시작', 'success');
+            
+            if (testInterval) {
+                clearInterval(testInterval);
+            }
+            
+            const timeOverlay = document.getElementById('testTimeOverlay');
+            if (!timeOverlay) {
+                addLog('ERROR: 시간 오버레이 요소를 찾을 수 없습니다', 'error');
+                return;
+            }
+            
+            addLog('시간 오버레이 요소 발견: ' + timeOverlay.className, 'info');
+            
+            testInterval = setInterval(() => {
+                updateTestTime();
+                updateCount++;
+                
+                if (updateCount % 10 === 0) {
+                    addLog(`시간 업데이트 횟수: ${updateCount}`, 'info');
+                }
+            }, 1000);
+            
+            // 즉시 한 번 업데이트
+            updateTestTime();
+            
+            document.getElementById('updateStatus').textContent = '업데이트 중...';
+            document.getElementById('updateStatus').className = 'text-success';
+        }
+        
+        function stopTest() {
+            addLog('시간 오버레이 테스트 중지', 'warning');
+            
+            if (testInterval) {
+                clearInterval(testInterval);
+                testInterval = null;
+            }
+            
+            document.getElementById('updateStatus').textContent = '중지됨';
+            document.getElementById('updateStatus').className = 'text-danger';
+        }
+        
+        function updateTestTime() {
+            const now = new Date();
+            
+            const timeString = now.toLocaleTimeString('ko-KR', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
+            const dateString = now.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'short'
+            });
+            
+            const timeElement = document.getElementById('testCurrentTime');
+            const dateElement = document.getElementById('testCurrentDate');
+            
+            if (timeElement) {
+                timeElement.textContent = timeString;
+                addLog(`시간 업데이트: ${timeString}`);
+            } else {
+                addLog('ERROR: 시간 요소를 찾을 수 없습니다', 'error');
+            }
+            
+            if (dateElement) {
+                dateElement.textContent = dateString;
+            } else {
+                addLog('ERROR: 날짜 요소를 찾을 수 없습니다', 'error');
+            }
+        }
+        
+        function checkElements() {
+            addLog('DOM 요소 검사 시작', 'info');
+            
+            const timeOverlay = document.getElementById('testTimeOverlay');
+            const timeElement = document.getElementById('testCurrentTime');
+            const dateElement = document.getElementById('testCurrentDate');
+            
+            addLog(`시간 오버레이: ${timeOverlay ? 'O' : 'X'}`, timeOverlay ? 'success' : 'error');
+            addLog(`시간 요소: ${timeElement ? 'O' : 'X'}`, timeElement ? 'success' : 'error');
+            addLog(`날짜 요소: ${dateElement ? 'O' : 'X'}`, dateElement ? 'success' : 'error');
+            
+            if (timeOverlay) {
+                addLog(`오버레이 클래스: ${timeOverlay.className}`, 'info');
+                addLog(`오버레이 스타일: ${timeOverlay.style.cssText || 'none'}`, 'info');
+            }
+        }
+        
+        function clearLog() {
+            document.getElementById('debugLog').innerHTML = '<div class="text-success">[INFO] 로그 지워짐</div>';
+        }
+        
+        // 페이지 로드시 자동 시작
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('페이지 로드 완료, 자동 테스트 시작', 'success');
+            setTimeout(startTest, 1000);
+        });
+        
+        // 페이지 언로드시 정리
+        window.addEventListener('beforeunload', () => {
+            if (testInterval) {
+                clearInterval(testInterval);
+            }
+        });
+    </script>
+</body>
+</html>
