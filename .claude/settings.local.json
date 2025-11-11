@@ -13,7 +13,13 @@
       "Read(//Users/gzonesoft/api_files/stream/capture/**)",
       "Bash(cat:*)",
       "Bash(docker exec:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(psql:*)",
+      "Read(//Users/gzonesoft/**)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(env)",
+      "Bash(compgen -c)"
     ],
     "deny": [],
     "ask": []

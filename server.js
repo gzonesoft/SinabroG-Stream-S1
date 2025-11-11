@@ -273,41 +273,51 @@ app.post('/api/generate-key', (req, res) => {
 const { Pool } = require('pg');
 const pool = new Pool({
   host: 'localhost',
-  port: 17332,
+  port: 5432,
   database: 'postgres',
   user: 'postgres',
-  password: 'gzonesoft_supabase_2025_secure_db_password'
+  password: 'Gzone0917!!'
 });
 
-// 위치 이력 조회 API
+// 위치 이력 조회 API (PostgREST 프록시)
 app.post('/api/position-history/query', async (req, res) => {
   try {
     const { device_id, start_date, end_date, limit = 100 } = req.body;
-    
+
     console.log('[API] Position history query:', { device_id, start_date, end_date, limit });
-    
-    // SQL 쿼리 실행
-    const query = `
-      SELECT * FROM ah_get_position_history(
-        $1::VARCHAR,
-        $2::TIMESTAMPTZ,
-        $3::TIMESTAMPTZ,
-        $4::INTEGER,
-        FALSE
-      ) ORDER BY position_timestamp DESC
-    `;
-    
-    const result = await pool.query(query, [
-      device_id,
-      start_date || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      end_date || new Date().toISOString(),
-      limit
-    ]);
-    
+
+    // PostgREST API 쿼리 구성
+    let queryParams = new URLSearchParams();
+    queryParams.append('order', 'timestamp.desc');
+    queryParams.append('limit', limit.toString());
+
+    if (device_id) {
+      queryParams.append('device_id', `eq.${device_id}`);
+    }
+
+    if (start_date) {
+      queryParams.append('timestamp', `gte.${start_date}`);
+    }
+
+    if (end_date) {
+      queryParams.append('timestamp', `lte.${end_date}`);
+    }
+
+    const postgrestUrl = `http://localhost:17411/position_history?${queryParams.toString()}`;
+    console.log('[API] PostgREST URL:', postgrestUrl);
+
+    const response = await fetch(postgrestUrl);
+
+    if (!response.ok) {
+      throw new Error(`PostgREST 응답 오류: ${response.status}`);
+    }
+
+    const data = await response.json();
+
     res.json({
       success: true,
-      count: result.rows.length,
-      data: result.rows
+      count: data.length,
+      data: data
     });
   } catch (error) {
     console.error('[ERROR] Position history query failed:', error);
@@ -319,7 +329,7 @@ app.post('/api/position-history/query', async (req, res) => {
   }
 });
 
-// 위치 저장 API
+// 위치 저장 API (PostgREST 프록시)
 app.post('/api/position-history/save', async (req, res) => {
   try {
     const {
@@ -328,41 +338,48 @@ app.post('/api/position-history/save', async (req, res) => {
       longitude,
       altitude = 0,
       speed = 0,
-      heading = 0,
-      battery_level = null,
+      azimuth = 0,
+      battery_level = 0,
       timestamp = null,
-      metadata = null,
-      spare_text1 = null,
-      spare_text2 = null,
-      spare_text3 = null,
-      spare_text4 = null,
-      spare_text5 = null,
-      spare_numeric1 = null,
-      spare_numeric2 = null,
-      spare_numeric3 = null,
-      spare_json = null,
-      custom_data = null
+      flight_mode = null,
+      ...extraFields
     } = req.body;
-    
+
     console.log('[API] Position save request:', { device_id, latitude, longitude });
-    
-    const query = `
-      SELECT ah_save_position_history(
-        $1, $2, $3, $4, $5, $6, $7, $8, $9,
-        $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
-      )
-    `;
-    
-    const result = await pool.query(query, [
-      device_id, latitude, longitude, altitude, speed, heading, battery_level,
-      timestamp, metadata ? JSON.stringify(metadata) : null,
-      spare_text1, spare_text2, spare_text3, spare_text4, spare_text5,
-      spare_numeric1, spare_numeric2, spare_numeric3,
-      spare_json ? JSON.stringify(spare_json) : null,
-      custom_data
-    ]);
-    
-    res.json(result.rows[0].ah_save_position_history);
+
+    const positionData = {
+      device_id,
+      latitude,
+      longitude,
+      altitude,
+      speed,
+      azimuth,
+      battery_level,
+      timestamp: timestamp || new Date().toISOString(),
+      flight_mode,
+      ...extraFields
+    };
+
+    const response = await fetch('http://localhost:17411/position_history', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(positionData)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`PostgREST 응답 오류: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+
+    res.json({
+      success: true,
+      data: result
+    });
   } catch (error) {
     console.error('[ERROR] Position save failed:', error);
     res.status(500).json({
@@ -373,17 +390,27 @@ app.post('/api/position-history/save', async (req, res) => {
   }
 });
 
-// 현재 위치 조회 API
+// 현재 위치 조회 API (PostgREST 프록시)
 app.get('/api/position-history/current/:deviceId?', async (req, res) => {
   try {
     const { deviceId } = req.params;
-    
-    const query = `SELECT * FROM ah_get_current_position($1)`;
-    const result = await pool.query(query, [deviceId || null]);
-    
+
+    let url = 'http://localhost:17411/now_position';
+    if (deviceId) {
+      url += `?device_id=eq.${deviceId}`;
+    }
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`PostgREST 응답 오류: ${response.status}`);
+    }
+
+    const data = await response.json();
+
     res.json({
       success: true,
-      data: result.rows
+      data: data
     });
   } catch (error) {
     console.error('[ERROR] Current position query failed:', error);
@@ -394,18 +421,40 @@ app.get('/api/position-history/current/:deviceId?', async (req, res) => {
   }
 });
 
-// 통계 조회 API
+// 통계 조회 API (PostgREST 프록시)
 app.get('/api/position-history/stats/:deviceId', async (req, res) => {
   try {
     const { deviceId } = req.params;
     const { days = 7 } = req.query;
-    
-    const query = `SELECT ah_get_position_stats($1, $2)`;
-    const result = await pool.query(query, [deviceId, parseInt(days)]);
-    
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days));
+
+    const url = `http://localhost:17411/position_history?device_id=eq.${deviceId}&timestamp=gte.${startDate.toISOString()}&select=*`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`PostgREST 응답 오류: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // 통계 계산
+    const stats = {
+      device_id: deviceId,
+      period_days: parseInt(days),
+      total_positions: data.length,
+      total_distance_meters: 0,
+      average_speed: data.length > 0 ? data.reduce((sum, p) => sum + (p.speed || 0), 0) / data.length : 0,
+      max_altitude: data.length > 0 ? Math.max(...data.map(p => p.altitude || 0)) : 0,
+      min_battery_level: data.length > 0 ? Math.min(...data.map(p => p.battery_level || 100)) : 0,
+      positions_per_day: data.length > 0 ? data.length / parseInt(days) : 0
+    };
+
     res.json({
       success: true,
-      data: result.rows[0].ah_get_position_stats
+      data: stats
     });
   } catch (error) {
     console.error('[ERROR] Stats query failed:', error);

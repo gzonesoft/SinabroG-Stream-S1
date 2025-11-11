@@ -1356,8 +1356,9 @@
                 if (!response.ok) {
                     throw new Error(`서버 응답 오류: ${response.status}`);
                 }
-                
-                const data = await response.json();
+
+                const result = await response.json();
+                const data = result.data || result; // data 객체에서 배열 추출
                 renderServerPositions(data);
                 document.getElementById('serverTabBadge').textContent = data.length;
                 
@@ -1382,7 +1383,7 @@
             
             let html = '<div class="list-group">';
             positions.forEach(pos => {
-                const timestamp = new Date(pos.position_timestamp).toLocaleString('ko-KR');
+                const timestamp = new Date(pos.timestamp || pos.position_timestamp).toLocaleString('ko-KR');
                 html += `
                     <div class="list-group-item">
                         <div class="d-flex justify-content-between align-items-start">
